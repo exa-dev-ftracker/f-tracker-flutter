@@ -1,0 +1,4 @@
+// Google Sign-In iOS Configuration
+// Replace with the REVERSED_CLIENT_ID from your Google Cloud Console iOS Client ID
+// (Format: com.googleusercontent.apps.1234567890-abcdef...)
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.REVERSED_CLIENT_ID_PLACEHOLDER
