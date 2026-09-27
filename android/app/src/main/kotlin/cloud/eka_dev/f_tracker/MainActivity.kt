@@ -1,4 +1,4 @@
-package com.ftracker.f_tracker_mobile
+package cloud.eka_dev.f_tracker
 
 import io.flutter.embedding.android.FlutterActivity
 
