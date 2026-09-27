@@ -8,6 +8,16 @@ on:
         required: false
         default: false
         type: boolean
+      build_name:
+        description: "App Version Name override (e.g. 1.0.0). Defaults to pubspec.yaml / tag"
+        required: false
+        default: ""
+        type: string
+      build_number:
+        description: "App Build Number override (integer). Defaults to github.run_number"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -23,6 +33,8 @@ jobs:
       flutter_version: "3.x"
       enable_semantic_release: false
       update_pubspec: false
+      build_name: ${{ inputs.build_name || '' }}
+      build_number: ${{ inputs.build_number || '' }}
       upload_to_testflight: ${{ inputs.upload_to_testflight || false }}
     secrets:
       APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}

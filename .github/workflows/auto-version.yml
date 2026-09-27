@@ -1,0 +1,324 @@
+name: Auto Versioning
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'web/**'
+      - 'pubspec.yaml'
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "SemVer Bump Type"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: "Custom Version Override (e.g. 1.2.0 - leaves build number calculation intact)"
+        required: false
+        default: ""
+        type: string
+      build_number:
+        description: "Custom Build Number Override (integer). Leave empty to auto-increment from pubspec.yaml"
+        required: false
+        default: ""
+        type: string
+      create_release:
+        description: "Create GitHub Release and Git Tag"
+        required: false
+        default: true
+        type: boolean
+      trigger_android_deploy:
+        description: "Trigger Deploy Android workflow after version bump"
+        required: false
+        default: false
+        type: boolean
+      trigger_ios_deploy:
+        description: "Trigger Deploy iOS workflow after version bump"
+        required: false
+        default: false
+        type: boolean
+
+  workflow_call:
+    inputs:
+      bump_type:
+        description: "SemVer Bump Type"
+        required: false
+        default: "auto"
+        type: string
+      custom_version:
+        description: "Custom Version Override"
+        required: false
+        default: ""
+        type: string
+      build_number:
+        description: "Custom Build Number Override"
+        required: false
+        default: ""
+        type: string
+      create_release:
+        description: "Create GitHub Release and Git Tag"
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      version:
+        description: "New SemVer version (e.g. 1.1.0)"
+        value: ${{ jobs.version.outputs.version }}
+      build_number:
+        description: "New Build Number (e.g. 2)"
+        value: ${{ jobs.version.outputs.build_number }}
+      full_version:
+        description: "New Full Version (e.g. 1.1.0+2)"
+        value: ${{ jobs.version.outputs.full_version }}
+      tag_name:
+        description: "Git Tag Name (e.g. v1.1.0)"
+        value: ${{ jobs.version.outputs.tag_name }}
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: auto-versioning-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Bump Version & Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore(release):')"
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      build_number: ${{ steps.bump.outputs.build_number }}
+      full_version: ${{ steps.bump.outputs.full_version }}
+      tag_name: ${{ steps.bump.outputs.tag_name }}
+      bump_type: ${{ steps.bump.outputs.bump_type }}
+      prev_version: ${{ steps.bump.outputs.prev_version }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate & Bump Version
+        id: bump
+        run: |
+          set -e
+          git fetch --tags --force 2>/dev/null || true
+
+          # 1. Read current version from pubspec.yaml
+          VERSION_LINE=$(grep -E '^version:' pubspec.yaml | head -n 1)
+          if [ -z "$VERSION_LINE" ]; then
+            echo "::error::Could not find 'version:' line in pubspec.yaml"
+            exit 1
+          fi
+
+          CURRENT_FULL_VER=$(echo "$VERSION_LINE" | awk '{print $2}' | tr -d '\r')
+          CURRENT_SEMVER=$(echo "$CURRENT_FULL_VER" | cut -d'+' -f1)
+          CURRENT_BUILD=$(echo "$CURRENT_FULL_VER" | cut -d'+' -f2)
+
+          if [ -z "$CURRENT_BUILD" ]; then
+            CURRENT_BUILD="1"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_SEMVER"
+          MAJOR=${MAJOR:-1}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+
+          echo "📋 Current pubspec version: $CURRENT_FULL_VER ($CURRENT_SEMVER + $CURRENT_BUILD)"
+
+          # 2. Determine bump type
+          INPUT_BUMP="${{ inputs.bump_type || 'auto' }}"
+          DETERMINED_BUMP="$INPUT_BUMP"
+
+          if [ "$INPUT_BUMP" = "auto" ]; then
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$LATEST_TAG" ]; then
+              COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"%s" 2>/dev/null || echo "")
+            else
+              COMMITS=$(git log -n 25 --pretty=format:"%s" 2>/dev/null || echo "")
+            fi
+
+            IS_MAJOR=false
+            IS_MINOR=false
+            IS_PATCH=false
+
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              if echo "$line" | grep -Eq '(BREAKING[ -]CHANGE|^[a-z]+(\([^\)]+\))?!:)'; then
+                IS_MAJOR=true
+                break
+              elif echo "$line" | grep -Eq '^feat(\([^\)]+\))?:'; then
+                IS_MINOR=true
+              elif echo "$line" | grep -Eq '^(fix|perf|refactor)(\([^\)]+\))?:'; then
+                IS_PATCH=true
+              fi
+            done <<< "$COMMITS"
+
+            if [ "$IS_MAJOR" = true ]; then
+              DETERMINED_BUMP="major"
+            elif [ "$IS_MINOR" = true ]; then
+              DETERMINED_BUMP="minor"
+            elif [ "$IS_PATCH" = true ]; then
+              DETERMINED_BUMP="patch"
+            else
+              DETERMINED_BUMP="patch"
+            fi
+          fi
+
+          # 3. Calculate new SemVer
+          CUSTOM_VER="${{ inputs.custom_version }}"
+          if [ -n "$CUSTOM_VER" ]; then
+            NEW_SEMVER="$CUSTOM_VER"
+          else
+            case "$DETERMINED_BUMP" in
+              major)
+                NEW_SEMVER="$((MAJOR + 1)).0.0"
+                ;;
+              minor)
+                NEW_SEMVER="${MAJOR}.$((MINOR + 1)).0"
+                ;;
+              patch|*)
+                NEW_SEMVER="${MAJOR}.${MINOR}.$((PATCH + 1))"
+                ;;
+            esac
+          fi
+
+          # 4. Calculate new Build Number (always increment by 1 or use input override)
+          INPUT_BUILD="${{ inputs.build_number }}"
+          if [ -n "$INPUT_BUILD" ]; then
+            NEW_BUILD="$INPUT_BUILD"
+          else
+            NEW_BUILD=$((CURRENT_BUILD + 1))
+          fi
+
+          NEW_FULL_VER="${NEW_SEMVER}+${NEW_BUILD}"
+          TAG_NAME="v${NEW_SEMVER}"
+
+          echo "🚀 New version: $NEW_FULL_VER (Tag: $TAG_NAME, Bump: $DETERMINED_BUMP)"
+
+          # 5. Update pubspec.yaml
+          sed -i.bak -E "s/^version: .*/version: ${NEW_FULL_VER}/" pubspec.yaml && rm -f pubspec.yaml.bak
+
+          # 6. Set Outputs
+          echo "version=$NEW_SEMVER" >> $GITHUB_OUTPUT
+          echo "build_number=$NEW_BUILD" >> $GITHUB_OUTPUT
+          echo "full_version=$NEW_FULL_VER" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "bump_type=$DETERMINED_BUMP" >> $GITHUB_OUTPUT
+          echo "prev_version=$CURRENT_FULL_VER" >> $GITHUB_OUTPUT
+
+      - name: Commit, Tag & Push
+        env:
+          NEW_FULL_VER: ${{ steps.bump.outputs.full_version }}
+          TAG_NAME: ${{ steps.bump.outputs.tag_name }}
+          CREATE_RELEASE: ${{ inputs.create_release != false }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain pubspec.yaml)" ]; then
+            git add pubspec.yaml
+            git commit -m "chore(release): bump version to ${NEW_FULL_VER} [skip ci]"
+            
+            BRANCH_NAME="${{ github.ref_name }}"
+            if [ -z "$BRANCH_NAME" ]; then
+              BRANCH_NAME="main"
+            fi
+            
+            git pull --rebase origin "$BRANCH_NAME" 2>/dev/null || true
+            git push origin HEAD:"$BRANCH_NAME"
+            echo "✅ Successfully committed and pushed updated pubspec.yaml to $BRANCH_NAME"
+          else
+            echo "ℹ️ No changes in pubspec.yaml"
+          fi
+
+          if [ "$CREATE_RELEASE" = "true" ]; then
+            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+              echo "⚠️ Tag $TAG_NAME already exists, skipping tag creation."
+            else
+              git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+              git push origin "$TAG_NAME"
+              echo "🏷️ Pushed git tag $TAG_NAME"
+            fi
+          fi
+
+      - name: Generate Changelog & GitHub Release
+        if: ${{ inputs.create_release != false }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.bump.outputs.tag_name }}
+          NEW_FULL_VER: ${{ steps.bump.outputs.full_version }}
+          BUILD_NUMBER: ${{ steps.bump.outputs.build_number }}
+        run: |
+          LATEST_PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${TAG_NAME}$" | head -n 1 || echo "")
+          if [ -n "$LATEST_PREV_TAG" ]; then
+            NOTES=$(git log "${LATEST_PREV_TAG}..HEAD" --pretty=format:"* %s (%h)" --no-merges 2>/dev/null | grep -v "\[skip ci\]" || echo "* Routine release update")
+          else
+            NOTES=$(git log -n 15 --pretty=format:"* %s (%h)" --no-merges 2>/dev/null | grep -v "\[skip ci\]" || echo "* Initial automated release")
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "ℹ️ GitHub release $TAG_NAME already exists."
+          else
+            gh release create "$TAG_NAME" \
+              --title "$TAG_NAME (Build ${BUILD_NUMBER})" \
+              --notes "$NOTES" \
+              --target "${{ github.ref_name }}" || echo "⚠️ Could not create GitHub Release, continuing."
+            echo "🎉 Created GitHub Release $TAG_NAME"
+          fi
+
+      - name: Trigger Downstream Deployment Workflows
+        if: ${{ inputs.trigger_android_deploy == true || inputs.trigger_ios_deploy == true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_NAME: ${{ steps.bump.outputs.version }}
+          BUILD_NUMBER: ${{ steps.bump.outputs.build_number }}
+        run: |
+          if [ "${{ inputs.trigger_android_deploy }}" = "true" ]; then
+            echo "🚀 Triggering deploy-android.yml..."
+            gh workflow run deploy-android.yml \
+              -f build_name="$BUILD_NAME" \
+              -f build_number="$BUILD_NUMBER" || echo "⚠️ Could not trigger deploy-android.yml"
+          fi
+
+          if [ "${{ inputs.trigger_ios_deploy }}" = "true" ]; then
+            echo "🚀 Triggering deploy-ios.yml..."
+            gh workflow run deploy-ios.yml \
+              -f build_name="$BUILD_NAME" \
+              -f build_number="$BUILD_NUMBER" || echo "⚠️ Could not trigger deploy-ios.yml"
+          fi
+
+      - name: GitHub Step Summary
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 📱 Mobile Auto-Versioning Complete
+
+          | Parameter | Value |
+          |---|---|
+          | **Previous Version** | `${{ steps.bump.outputs.prev_version }}` |
+          | **New Version** | `${{ steps.bump.outputs.full_version }}` |
+          | **SemVer (Version Name)** | `${{ steps.bump.outputs.version }}` |
+          | **Build Number (Version Code)** | `${{ steps.bump.outputs.build_number }}` |
+          | **Bump Type** | `${{ steps.bump.outputs.bump_type }}` |
+          | **Git Tag** | `${{ steps.bump.outputs.tag_name }}` |
+          | **Triggered By** | `${{ github.triggering_actor }}` via `${{ github.event_name }}` |
+
+          EOF
