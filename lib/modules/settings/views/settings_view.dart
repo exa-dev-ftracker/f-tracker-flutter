@@ -18,11 +18,12 @@ class SettingsView extends GetView<SettingsController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: Navigator.canPop(context),
         title: const Text('Settings'),
         backgroundColor: AppColors.surface,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

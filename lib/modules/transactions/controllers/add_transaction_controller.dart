@@ -50,6 +50,27 @@ class AddTransactionController extends GetxController {
 
   final TextEditingController descController = TextEditingController();
 
+  @override
+  void onInit() {
+    super.onInit();
+    final args = Get.arguments;
+    if (args is Map && args['scanned'] is ScannedReceiptResult) {
+      _applyScannedResult(args['scanned'] as ScannedReceiptResult);
+    }
+  }
+
+  void _applyScannedResult(ScannedReceiptResult result) {
+    if (result.estimatedAmount != null && result.estimatedAmount! > 0) {
+      rawAmount.value = result.estimatedAmount!.toInt().toString();
+    }
+    if (result.merchantName != null && result.merchantName!.isNotEmpty) {
+      descController.text = result.merchantName!;
+    }
+    if (result.date != null) {
+      selectedDate.value = result.date!;
+    }
+  }
+
   double get amountValue => double.tryParse(rawAmount.value) ?? 0.0;
   bool get isIncome => selectedType.value == 'Income';
 
@@ -120,15 +141,7 @@ class AddTransactionController extends GetxController {
     AppHaptics.medium();
     final result = await ReceiptScannerService.showScannerModal();
     if (result != null) {
-      if (result.estimatedAmount != null && result.estimatedAmount! > 0) {
-        rawAmount.value = result.estimatedAmount!.toInt().toString();
-      }
-      if (result.merchantName != null && result.merchantName!.isNotEmpty) {
-        descController.text = result.merchantName!;
-      }
-      if (result.date != null) {
-        selectedDate.value = result.date!;
-      }
+      _applyScannedResult(result);
 
       if (result.estimatedAmount != null) {
         AppHaptics.success();

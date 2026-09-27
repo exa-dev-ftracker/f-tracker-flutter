@@ -14,6 +14,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: Navigator.canPop(context),
         title: const Text('Financial Analytics'),
         backgroundColor: AppColors.surface,
         actions: [
@@ -31,7 +32,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
           color: AppColors.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

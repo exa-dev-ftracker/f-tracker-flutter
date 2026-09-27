@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/offline_sync_banner.dart';
 import '../../../routes/app_routes.dart';
+import '../../navigation/controllers/navigation_controller.dart';
 import '../controllers/transaction_controller.dart';
 import 'widgets/transaction_card.dart';
 
@@ -15,6 +16,7 @@ class TransactionsView extends GetView<TransactionController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: Navigator.canPop(context),
         title: const Text('Transactions'),
         backgroundColor: AppColors.surface,
         actions: [
@@ -26,14 +28,16 @@ class TransactionsView extends GetView<TransactionController> {
           const SizedBox(width: 4),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        tooltip: 'Record New Transaction',
-        onPressed: () => Get.toNamed(Routes.addTransaction),
-        child: const Icon(Icons.add_rounded, size: 28),
-      ),
+      floatingActionButton: Get.isRegistered<NavigationController>()
+          ? null
+          : FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              tooltip: 'Record New Transaction',
+              onPressed: () => Get.toNamed(Routes.addTransaction),
+              child: const Icon(Icons.add_rounded, size: 28),
+            ),
       body: Column(
         children: [
           // Offline & Sync Status Banner
@@ -141,7 +145,7 @@ class TransactionsView extends GetView<TransactionController> {
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   itemCount: controller.transactions.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),

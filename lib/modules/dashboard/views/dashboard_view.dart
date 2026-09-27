@@ -7,6 +7,7 @@ import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/offline_sync_banner.dart';
 import '../../../routes/app_routes.dart';
+import '../../navigation/controllers/navigation_controller.dart';
 import '../../transactions/views/widgets/transaction_card.dart';
 import '../controllers/dashboard_controller.dart';
 
@@ -27,7 +28,7 @@ class DashboardView extends GetView<DashboardController> {
           color: AppColors.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -69,7 +70,13 @@ class DashboardView extends GetView<DashboardController> {
       children: [
         // User Avatar
         GestureDetector(
-          onTap: () => Get.toNamed(Routes.settings),
+          onTap: () {
+            if (Get.isRegistered<NavigationController>()) {
+              Get.find<NavigationController>().changeTab(3);
+            } else {
+              Get.toNamed(Routes.settings);
+            }
+          },
           child: Container(
             width: 44,
             height: 44,
@@ -123,7 +130,13 @@ class DashboardView extends GetView<DashboardController> {
         IconButton(
           icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
           tooltip: 'Settings & Account',
-          onPressed: () => Get.toNamed(Routes.settings),
+          onPressed: () {
+            if (Get.isRegistered<NavigationController>()) {
+              Get.find<NavigationController>().changeTab(3);
+            } else {
+              Get.toNamed(Routes.settings);
+            }
+          },
         ),
       ],
     );
@@ -364,7 +377,13 @@ class DashboardView extends GetView<DashboardController> {
           icon: Icons.bar_chart_rounded,
           color: AppColors.accent,
           label: 'Analytics',
-          onTap: () => Get.toNamed(Routes.analytics),
+          onTap: () {
+            if (Get.isRegistered<NavigationController>()) {
+              Get.find<NavigationController>().changeTab(2);
+            } else {
+              Get.toNamed(Routes.analytics);
+            }
+          },
         ),
         _buildActionTile(
           icon: Icons.category_rounded,
@@ -501,7 +520,13 @@ class DashboardView extends GetView<DashboardController> {
                 ),
               ),
               TextButton(
-                onPressed: () => Get.toNamed(Routes.transactions),
+                onPressed: () {
+                  if (Get.isRegistered<NavigationController>()) {
+                    Get.find<NavigationController>().changeTab(1);
+                  } else {
+                    Get.toNamed(Routes.transactions);
+                  }
+                },
                 child: const Text('View All'),
               ),
             ],

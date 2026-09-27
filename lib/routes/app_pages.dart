@@ -6,8 +6,8 @@ import '../modules/auth/views/login_view.dart';
 import '../modules/auth/views/register_view.dart';
 import '../modules/categories/bindings/category_binding.dart';
 import '../modules/categories/views/categories_view.dart';
-import '../modules/dashboard/bindings/dashboard_binding.dart';
-import '../modules/dashboard/views/dashboard_view.dart';
+import '../modules/navigation/bindings/navigation_binding.dart';
+import '../modules/navigation/views/main_navigation_view.dart';
 import '../modules/settings/bindings/settings_binding.dart';
 import '../modules/settings/views/settings_view.dart';
 import '../modules/splash/bindings/splash_binding.dart';
@@ -43,8 +43,8 @@ class AppPages {
     ),
     GetPage(
       name: Routes.dashboard,
-      page: () => const DashboardView(),
-      binding: DashboardBinding(),
+      page: () => const MainNavigationView(),
+      binding: NavigationBinding(),
       middlewares: [AuthMiddleware()],
       transition: Transition.fadeIn,
     ),
