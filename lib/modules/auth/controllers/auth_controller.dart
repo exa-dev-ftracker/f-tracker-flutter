@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/services/snackbar_service.dart';
+import '../../../core/services/social_auth_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../routes/app_routes.dart';
@@ -18,6 +19,7 @@ class AuthController extends GetxController {
   });
 
   final isLoading = false.obs;
+  final isAppleAvailable = false.obs;
   final currentUser = Rxn<UserModel>();
 
   final loginEmailController = TextEditingController();
@@ -34,6 +36,11 @@ class AuthController extends GetxController {
     if (saved != null) {
       currentUser.value = UserModel.fromJson(saved);
     }
+    _checkAppleAvailability();
+  }
+
+  Future<void> _checkAppleAvailability() async {
+    isAppleAvailable.value = await SocialAuthService.isAppleSignInAvailable();
   }
 
   Future<void> login() async {
@@ -102,6 +109,100 @@ class AuthController extends GetxController {
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
       LoggerService.e('Registration failed: $e', tag: 'AuthController');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    try {
+      AppHaptics.light();
+      isLoading.value = true;
+
+      final result = await SocialAuthService.signInWithGoogle();
+      if (result == null) {
+        isLoading.value = false;
+        return; // User cancelled
+      }
+
+      // Send authorization code (or credential fallback) to backend for verification
+      final auth = await repository.loginWithGoogle(
+        code: result.serverAuthCode,
+        credential: result.idToken,
+      );
+
+      await storageService.saveAccessToken(auth.accessToken);
+      await storageService.saveRefreshToken(auth.refreshToken);
+
+      try {
+        final profile = await repository.getProfile();
+        currentUser.value = profile;
+        await storageService.saveUser(profile.toJson());
+      } catch (_) {
+        final fallback = UserModel(
+          id: 'me',
+          name: result.displayName ?? result.email?.split('@').first ?? 'User',
+          email: result.email ?? '',
+        );
+        currentUser.value = fallback;
+        await storageService.saveUser(fallback.toJson());
+      }
+
+      AppHaptics.success();
+      SnackbarService.success('Logged in with Google successfully!');
+      Get.offAllNamed(Routes.dashboard);
+    } catch (e) {
+      LoggerService.e('Google login failed: $e', tag: 'AuthController');
+      SnackbarService.error('Failed to log in with Google: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loginWithApple() async {
+    try {
+      AppHaptics.light();
+      isLoading.value = true;
+
+      final result = await SocialAuthService.signInWithApple();
+      if (result == null) {
+        isLoading.value = false;
+        return; // User cancelled
+      }
+
+      final fullName = [result.givenName, result.familyName].where((s) => s != null && s.isNotEmpty).join(' ');
+
+      final auth = await repository.loginWithApple(
+        code: result.authorizationCode,
+        identityToken: result.identityToken,
+        userIdentifier: result.userIdentifier,
+        email: result.email,
+        name: fullName.isNotEmpty ? fullName : null,
+      );
+
+      await storageService.saveAccessToken(auth.accessToken);
+      await storageService.saveRefreshToken(auth.refreshToken);
+
+      try {
+        final profile = await repository.getProfile();
+        currentUser.value = profile;
+        await storageService.saveUser(profile.toJson());
+      } catch (_) {
+        final fallback = UserModel(
+          id: 'me',
+          name: fullName.isNotEmpty ? fullName : 'Apple User',
+          email: result.email ?? '',
+        );
+        currentUser.value = fallback;
+        await storageService.saveUser(fallback.toJson());
+      }
+
+      AppHaptics.success();
+      SnackbarService.success('Logged in with Apple successfully!');
+      Get.offAllNamed(Routes.dashboard);
+    } catch (e) {
+      LoggerService.e('Apple login failed: $e', tag: 'AuthController');
+      SnackbarService.error('Failed to log in with Apple: $e');
     } finally {
       isLoading.value = false;
     }

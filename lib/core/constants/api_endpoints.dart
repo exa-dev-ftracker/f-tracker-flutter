@@ -12,6 +12,7 @@ class ApiEndpoints {
   static const String logout = '/auth/v1/logout';
   static const String refresh = '/auth/v1/refresh';
   static const String googleAuth = '/auth/v1/login-with-google';
+  static const String appleAuth = '/auth/v1/login-with-apple';
 
   // Protected Routes (/api/v1)
   // Dashboard & Analytics
