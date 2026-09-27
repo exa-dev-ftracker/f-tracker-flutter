@@ -62,6 +62,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
     ];
 
     return Obx(() {
+      final selected = controller.selectedView.value;
       return SizedBox(
         height: 36,
         child: ListView.separated(
@@ -70,7 +71,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
             final p = periods[index];
-            final isSelected = controller.selectedView.value == p['key'];
+            final isSelected = selected == p['key'];
 
             return GestureDetector(
               onTap: () => controller.setView(p['key']!),
