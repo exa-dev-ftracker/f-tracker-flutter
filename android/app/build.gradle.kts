@@ -27,8 +27,10 @@ android {
         create("release") {
             keyAlias = keystoreProperties.getProperty("keyAlias")
             keyPassword = keystoreProperties.getProperty("keyPassword")
-            storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
             storePassword = keystoreProperties.getProperty("storePassword")
+            val keystorePath = keystoreProperties.getProperty("storeFile") ?: "upload-keystore.jks"
+            val resolvedStoreFile = if (file(keystorePath).exists()) file(keystorePath) else rootProject.file(keystorePath)
+            storeFile = resolvedStoreFile
         }
     }
 
@@ -49,9 +51,11 @@ android {
 
     buildTypes {
         release {
+            val keystorePath = keystoreProperties.getProperty("storeFile") ?: "upload-keystore.jks"
+            val resolvedStoreFile = if (file(keystorePath).exists()) file(keystorePath) else rootProject.file(keystorePath)
             val hasReleaseKey = keystorePropertiesFile.exists() &&
-                keystoreProperties.getProperty("storeFile") != null &&
-                file(keystoreProperties.getProperty("storeFile")).exists()
+                keystoreProperties.getProperty("keyAlias") != null &&
+                resolvedStoreFile.exists()
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
