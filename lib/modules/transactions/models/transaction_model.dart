@@ -6,20 +6,23 @@ class TransactionModel {
   final String type; // 'Income' or 'Expense'
   final String description;
   final CategoryModel? category;
-  final DateTime createdAt;
+  final DateTime date; // The actual date the transaction occurred
+  final DateTime createdAt; // Real system insertion timestamp
   final bool isPendingSync;
 
-  const TransactionModel({
+  TransactionModel({
     required this.id,
     required this.amount,
     required this.type,
     required this.description,
     this.category,
+    DateTime? date,
     required this.createdAt,
     this.isPendingSync = false,
-  });
+  }) : date = date ?? createdAt;
 
   bool get isIncome => type.toLowerCase() == 'income';
+  DateTime get transactionDate => date;
 
   TransactionModel copyWith({
     String? id,
@@ -27,6 +30,7 @@ class TransactionModel {
     String? type,
     String? description,
     CategoryModel? category,
+    DateTime? date,
     DateTime? createdAt,
     bool? isPendingSync,
   }) {
@@ -36,6 +40,7 @@ class TransactionModel {
       type: type ?? this.type,
       description: description ?? this.description,
       category: category ?? this.category,
+      date: date ?? this.date,
       createdAt: createdAt ?? this.createdAt,
       isPendingSync: isPendingSync ?? this.isPendingSync,
     );
@@ -47,9 +52,14 @@ class TransactionModel {
       cat = CategoryModel.fromJson(Map<String, dynamic>.from(json['category']));
     }
 
-    DateTime dt = DateTime.now();
+    DateTime createdDt = DateTime.now();
     if (json['createdAt'] != null) {
-      dt = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+      createdDt = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+    }
+
+    DateTime txDate = createdDt;
+    if (json['date'] != null) {
+      txDate = DateTime.tryParse(json['date'].toString()) ?? createdDt;
     }
 
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
@@ -61,7 +71,8 @@ class TransactionModel {
       type: json['type']?.toString() ?? 'Expense',
       description: json['description']?.toString() ?? '',
       category: cat,
-      createdAt: dt,
+      date: txDate,
+      createdAt: createdDt,
       isPendingSync: isPending,
     );
   }
@@ -72,6 +83,7 @@ class TransactionModel {
     'type': type,
     'description': description,
     'category': category?.toJson(),
+    'date': date.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
     'isPendingSync': isPendingSync,
   };

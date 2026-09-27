@@ -12,13 +12,13 @@ class SettingsView extends GetView<SettingsController> {
   @override
   Widget build(BuildContext context) {
     final user = controller.user;
-    final userName = user?['name'] ?? 'Pengguna F-Tracker';
+    final userName = user?['name'] ?? 'F-Tracker User';
     final userEmail = user?['email'] ?? 'user@example.com';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Pengaturan'),
+        title: const Text('Settings'),
         backgroundColor: AppColors.surface,
       ),
       body: SingleChildScrollView(
@@ -82,7 +82,7 @@ class SettingsView extends GetView<SettingsController> {
 
             // Offline & Cloud Sync Hub
             const Text(
-              'Sinkronisasi Cloud & Data Offline',
+              'Cloud Sync & Offline Storage',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -95,7 +95,7 @@ class SettingsView extends GetView<SettingsController> {
 
             // Security & Preferences Section
             const Text(
-              'Keamanan & Preferensi Mobile',
+              'Preferences & Security',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -113,8 +113,8 @@ class SettingsView extends GetView<SettingsController> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.fingerprint_rounded, color: AppColors.primaryLight),
-                    title: const Text('Kunci Biometrik (Face ID / Sidik Jari)', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                    subtitle: const Text('Amankan data saat app dibuka', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    title: const Text('Biometric Lock (Face ID / Fingerprint)', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                    subtitle: const Text('Secure data when app opens', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     trailing: Obx(() => Switch(
                       value: controller.isBiometricEnabled.value,
                       activeThumbColor: AppColors.primary,
@@ -122,10 +122,18 @@ class SettingsView extends GetView<SettingsController> {
                     )),
                   ),
                   const Divider(color: AppColors.border, height: 1),
+                  Obx(() => ListTile(
+                    leading: const Icon(Icons.public_rounded, color: AppColors.accent),
+                    title: const Text('Timezone', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                    subtitle: Text(controller.currentTimezone.value, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                    onTap: () => _showTimezonePicker(context),
+                  )),
+                  const Divider(color: AppColors.border, height: 1),
                   ListTile(
                     leading: const Icon(Icons.category_outlined, color: AppColors.secondary),
-                    title: const Text('Kelola Kategori', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                    subtitle: const Text('Atur kategori pemasukan & pengeluaran', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    title: const Text('Manage Categories', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                    subtitle: const Text('Organize income & expense categories', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
                     onTap: () => Get.toNamed(Routes.categories),
                   ),
@@ -143,23 +151,23 @@ class SettingsView extends GetView<SettingsController> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               icon: const Icon(Icons.logout_rounded, size: 20),
-              label: const Text('Keluar dari Akun'),
+              label: const Text('Log Out'),
               onPressed: () {
                 AppHaptics.heavy();
                 Get.dialog(
                   AlertDialog(
                     backgroundColor: AppColors.surface,
-                    title: const Text('Konfirmasi Keluar', style: TextStyle(color: AppColors.textPrimary)),
-                    content: const Text('Apakah Anda yakin ingin keluar dari akun ini?', style: TextStyle(color: AppColors.textSecondary)),
+                    title: const Text('Confirm Log Out', style: TextStyle(color: AppColors.textPrimary)),
+                    content: const Text('Are you sure you want to log out of this account?', style: TextStyle(color: AppColors.textSecondary)),
                     actions: [
-                      TextButton(onPressed: () => Get.back(), child: const Text('Batal', style: TextStyle(color: AppColors.textMuted))),
+                      TextButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
                       FilledButton(
                         style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                         onPressed: () {
                           Get.back();
                           controller.logout();
                         },
-                        child: const Text('Keluar'),
+                        child: const Text('Log Out'),
                       ),
                     ],
                   ),
@@ -184,7 +192,7 @@ class SettingsView extends GetView<SettingsController> {
                       Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'Zona Bahaya',
+                        'Danger Zone',
                         style: TextStyle(
                           color: AppColors.error,
                           fontSize: 14,
@@ -195,7 +203,7 @@ class SettingsView extends GetView<SettingsController> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Sesuai ketentuan Apple App Store, Anda berhak menghapus akun beserta seluruh data transaksi dan kategori secara permanen kapan saja. Tindakan ini tidak dapat dibatalkan.',
+                    'In accordance with Apple App Store guidelines, you have the right to permanently delete your account and all transaction and category data at any time. This action cannot be undone.',
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 14),
@@ -206,7 +214,7 @@ class SettingsView extends GetView<SettingsController> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.delete_forever_rounded, size: 18),
-                    label: const Text('Hapus Akun Permanen', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text('Permanently Delete Account', style: TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () {
                       AppHaptics.heavy();
                       Get.dialog(
@@ -217,18 +225,18 @@ class SettingsView extends GetView<SettingsController> {
                               Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
                               SizedBox(width: 8),
                               Expanded(
-                                child: Text('Hapus Akun Permanen?', style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
+                                child: Text('Delete Account Permanently?', style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
                               ),
                             ],
                           ),
                           content: const Text(
-                            'Apakah Anda yakin ingin menghapus akun ini secara permanen?\n\nSemua riwayat transaksi, kategori, dan profil Anda akan dihapus secara permanen dari server dan perangkat ini sesuai ketentuan privasi Apple. Anda tidak dapat memulihkannya lagi.',
+                            'Are you sure you want to permanently delete this account?\n\nAll your transaction history, categories, and profile data will be permanently removed from the server and this device in compliance with Apple privacy requirements. This action is irreversible.',
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                           ),
                           actions: [
                             TextButton(
                               onPressed: () => Get.back(),
-                              child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+                              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: AppColors.error),
@@ -236,7 +244,7 @@ class SettingsView extends GetView<SettingsController> {
                                 Get.back();
                                 controller.deleteAccount();
                               },
-                              child: const Text('Hapus Akun Saya'),
+                              child: const Text('Delete My Account'),
                             ),
                           ],
                         ),
@@ -306,7 +314,7 @@ class SettingsView extends GetView<SettingsController> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isOnline ? 'Online • Terhubung ke Server' : 'Mode Offline Aktif',
+                        isOnline ? 'Online • Connected to Server' : 'Offline Mode Active',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 14,
@@ -315,8 +323,8 @@ class SettingsView extends GetView<SettingsController> {
                       ),
                       Text(
                         isOnline
-                            ? 'Penyimpanan lokal & cloud tersinkronisasi otomatis'
-                            : 'Semua perubahan dicatat di HP & dikirim saat terhubung internet',
+                            ? 'Local & cloud storage automatically synchronized'
+                            : 'All changes recorded locally & queued for sync',
                         style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                       ),
                     ],
@@ -331,7 +339,7 @@ class SettingsView extends GetView<SettingsController> {
               children: [
                 Expanded(
                   child: _buildMetricTile(
-                    label: 'Antrean Offline',
+                    label: 'Offline Queue',
                     value: '$pendingCount item',
                     icon: Icons.pending_actions_rounded,
                     color: pendingCount > 0 ? AppColors.warning : AppColors.textSecondary,
@@ -340,7 +348,7 @@ class SettingsView extends GetView<SettingsController> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricTile(
-                    label: 'Cache Lokal',
+                    label: 'Local Cache',
                     value: '${controller.localTransactionCount} tx',
                     icon: Icons.sd_storage_rounded,
                     color: AppColors.secondary,
@@ -362,7 +370,7 @@ class SettingsView extends GetView<SettingsController> {
                   const Icon(Icons.history_rounded, size: 14, color: AppColors.textMuted),
                   const SizedBox(width: 8),
                   Text(
-                    'Terakhir sinkron: ${lastSynced != null ? CurrencyFormatter.formatDate(lastSynced) : "Belum pernah"}',
+                    'Last synced: ${lastSynced != null ? CurrencyFormatter.formatDate(lastSynced) : "Never"}',
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ],
@@ -388,7 +396,7 @@ class SettingsView extends GetView<SettingsController> {
                       )
                     : const Icon(Icons.sync_rounded, size: 18),
                 label: Text(
-                  isSyncing ? 'Menyinkronkan data...' : 'Sinkronkan Sekarang',
+                  isSyncing ? 'Syncing data...' : 'Sync Now',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
@@ -435,6 +443,71 @@ class SettingsView extends GetView<SettingsController> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showTimezonePicker(BuildContext context) {
+    final timezones = [
+      {'value': 'UTC', 'label': 'UTC (Universal Coordinated Time)'},
+      {'value': 'Asia/Jakarta', 'label': 'Asia/Jakarta (WIB, UTC+7)'},
+      {'value': 'Asia/Makassar', 'label': 'Asia/Makassar (WITA, UTC+8)'},
+      {'value': 'Asia/Jayapura', 'label': 'Asia/Jayapura (WIT, UTC+9)'},
+      {'value': 'Asia/Singapore', 'label': 'Asia/Singapore (SGT, UTC+8)'},
+      {'value': 'Asia/Tokyo', 'label': 'Asia/Tokyo (JST, UTC+9)'},
+      {'value': 'Europe/London', 'label': 'Europe/London (GMT/BST)'},
+      {'value': 'America/New_York', 'label': 'America/New_York (EST/EDT)'},
+      {'value': 'America/Los_Angeles', 'label': 'America/Los_Angeles (PST/PDT)'},
+    ];
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Text(
+                'Select Timezone',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: timezones.length,
+                itemBuilder: (context, index) {
+                  final tz = timezones[index];
+                  final isSelected = controller.currentTimezone.value == tz['value'];
+                  return ListTile(
+                    title: Text(tz['label']!, style: TextStyle(
+                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 14,
+                    )),
+                    trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
+                    onTap: () {
+                      Get.back();
+                      controller.updateTimezone(tz['value']!);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 }

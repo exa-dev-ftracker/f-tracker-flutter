@@ -19,6 +19,7 @@ class SettingsController extends GetxController {
 
   final isBiometricEnabled = false.obs;
   final isLoading = false.obs;
+  final currentTimezone = 'UTC'.obs;
 
   SyncService get syncService => Get.find<SyncService>();
   Map<String, dynamic>? get user => storageService.user;
@@ -29,6 +30,45 @@ class SettingsController extends GetxController {
   void onInit() {
     super.onInit();
     isBiometricEnabled.value = storageService.isBiometricEnabled;
+    currentTimezone.value = user?['timezone']?.toString() ?? 'UTC';
+    _fetchUserSettings();
+  }
+
+  Future<void> _fetchUserSettings() async {
+    try {
+      final res = await apiClient.get(ApiEndpoints.userSettings);
+      final data = res.data;
+      if (data != null && data['data'] != null && data['data']['timezone'] != null) {
+        currentTimezone.value = data['data']['timezone'].toString();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> updateTimezone(String newTimezone) async {
+    try {
+      AppHaptics.selection();
+      isLoading.value = true;
+      await apiClient.patch(
+        ApiEndpoints.userTimezone,
+        data: {'timezone': newTimezone},
+      );
+      currentTimezone.value = newTimezone;
+
+      // Update storage user if exists
+      if (storageService.user != null) {
+        final updatedUser = Map<String, dynamic>.from(storageService.user!);
+        updatedUser['timezone'] = newTimezone;
+        await storageService.saveUser(updatedUser);
+      }
+
+      AppHaptics.success();
+      SnackbarService.success('Timezone updated to $newTimezone');
+    } catch (e) {
+      LoggerService.e('Failed to update timezone: $e', tag: 'SettingsController');
+      SnackbarService.error('Failed to update timezone');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<void> triggerManualSync() async {
@@ -40,7 +80,7 @@ class SettingsController extends GetxController {
     AppHaptics.selection();
     isBiometricEnabled.value = val;
     storageService.setBiometricEnabled(val);
-    SnackbarService.success(val ? 'Kunci Biometrik diaktifkan' : 'Kunci Biometrik dinonaktifkan');
+    SnackbarService.success(val ? 'Biometric lock enabled' : 'Biometric lock disabled');
   }
 
   Future<void> logout() async {
@@ -52,7 +92,7 @@ class SettingsController extends GetxController {
     }
     await storageService.clearAuth();
     Get.offAllNamed(Routes.login);
-    SnackbarService.success('Berhasil keluar dari akun');
+    SnackbarService.success('Successfully logged out');
   }
 
   Future<void> deleteAccount() async {
@@ -70,7 +110,7 @@ class SettingsController extends GetxController {
       await storageService.saveSyncQueue([]);
       isLoading.value = false;
       Get.offAllNamed(Routes.login);
-      SnackbarService.success('Akun dan seluruh data Anda telah berhasil dihapus secara permanen.');
+      SnackbarService.success('Your account and all associated data have been permanently deleted.');
     }
   }
 }

@@ -32,7 +32,7 @@ class CategoryModel {
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Kategori',
+      name: json['name']?.toString() ?? 'Category',
       type: json['type']?.toString().toLowerCase() ?? 'expense',
       color: json['color']?.toString() ?? '#10B981',
       icon: json['icon']?.toString() ?? 'tag',

@@ -88,7 +88,7 @@ class CategoryController extends GetxController {
         icon: icon,
       );
       AppHaptics.light();
-      SnackbarService.info('Kategori "$name" disimpan lokal & masuk antrean sinkronisasi');
+      SnackbarService.info('Category "$name" saved locally & queued for sync');
       return true;
     }
 
@@ -105,7 +105,7 @@ class CategoryController extends GetxController {
         categories[idx] = newCat;
       }
       storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
-      SnackbarService.success('Kategori "$name" berhasil ditambahkan');
+      SnackbarService.success('Category "$name" successfully added');
       return true;
     } catch (e) {
       await syncService.enqueueCreateCategory(
@@ -114,7 +114,7 @@ class CategoryController extends GetxController {
         color: color,
         icon: icon,
       );
-      SnackbarService.info('Kategori "$name" tersimpan offline.');
+      SnackbarService.info('Category "$name" saved offline.');
       return true;
     }
   }
@@ -126,12 +126,12 @@ class CategoryController extends GetxController {
       if (success) {
         categories.removeWhere((c) => c.id == id);
         storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
-        SnackbarService.success('Kategori berhasil dihapus');
+        SnackbarService.success('Category successfully deleted');
         return true;
       }
       return false;
     } catch (e) {
-      SnackbarService.error('Gagal menghapus kategori');
+      SnackbarService.error('Failed to delete category');
       return false;
     }
   }

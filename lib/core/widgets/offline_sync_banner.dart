@@ -47,7 +47,7 @@ class OfflineSyncBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Menyinkronkan data...',
+                      'Syncing data...',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 12,
@@ -55,7 +55,7 @@ class OfflineSyncBanner extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Memperbarui data dengan cloud server',
+                      'Updating data with cloud server',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ],
@@ -93,7 +93,7 @@ class OfflineSyncBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Mode Offline Aktif',
+                      'Offline Mode Active',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 12,
@@ -102,8 +102,8 @@ class OfflineSyncBanner extends StatelessWidget {
                     ),
                     Text(
                       pending > 0
-                          ? '$pending transaksi tersimpan lokal & menunggu koneksi'
-                          : 'Anda tetap bisa mencatat transaksi. Data tersimpan di perangkat.',
+                          ? '$pending transactions stored locally & waiting for connection'
+                          : 'You can still record transactions. Data is saved locally.',
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                     ),
                   ],
@@ -141,7 +141,7 @@ class OfflineSyncBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$pending Transaksi Menunggu Sinkronisasi',
+                      '$pending Transactions Pending Sync',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 12,
@@ -149,7 +149,7 @@ class OfflineSyncBanner extends StatelessWidget {
                       ),
                     ),
                     const Text(
-                      'Ketuk untuk mengirim ke server',
+                      'Tap to send to cloud server',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ],
@@ -168,7 +168,7 @@ class OfflineSyncBanner extends StatelessWidget {
                   AppHaptics.selection();
                   syncService.syncNow();
                 },
-                child: const Text('Sinkronkan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                child: const Text('Sync', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

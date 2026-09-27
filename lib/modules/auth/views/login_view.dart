@@ -59,7 +59,7 @@ class LoginView extends GetView<AuthController> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Masuk untuk mengelola keuangan pribadi Anda',
+                  'Sign in to manage your personal finances',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
@@ -72,7 +72,7 @@ class LoginView extends GetView<AuthController> {
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    hintText: 'nama@domain.com',
+                    hintText: 'name@domain.com',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                 ),
@@ -84,7 +84,7 @@ class LoginView extends GetView<AuthController> {
                   obscureText: obscurePassword.value,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'Kata Sandi',
+                    labelText: 'Password',
                     hintText: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
@@ -107,7 +107,7 @@ class LoginView extends GetView<AuthController> {
                           height: 22,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text('Masuk'),
+                      : const Text('Sign In'),
                 )),
                 const SizedBox(height: 20),
 
@@ -115,11 +115,11 @@ class LoginView extends GetView<AuthController> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Belum punya akun? ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    const Text("Don't have an account? ", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     GestureDetector(
                       onTap: () => Get.toNamed(Routes.register),
                       child: const Text(
-                        'Daftar Sekarang',
+                        'Register Now',
                         style: TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),

@@ -14,12 +14,12 @@ class AnalyticsView extends GetView<AnalyticsController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Analitik Keuangan'),
+        title: const Text('Financial Analytics'),
         backgroundColor: AppColors.surface,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Segarkan data',
+            tooltip: 'Refresh data',
             onPressed: () => controller.fetchAnalytics(),
           ),
           const SizedBox(width: 4),
@@ -55,10 +55,10 @@ class AnalyticsView extends GetView<AnalyticsController> {
 
   Widget _buildPeriodSelector() {
     final periods = [
-      {'key': 'Day', 'label': 'Hari Ini'},
-      {'key': 'Week', 'label': 'Minggu Ini'},
-      {'key': 'Month', 'label': 'Bulan Ini'},
-      {'key': 'Year', 'label': 'Tahun Ini'},
+      {'key': 'Day', 'label': 'Today'},
+      {'key': 'Week', 'label': 'This Week'},
+      {'key': 'Month', 'label': 'This Month'},
+      {'key': 'Year', 'label': 'This Year'},
     ];
 
     return Obx(() {
@@ -116,7 +116,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
             children: [
               Expanded(
                 child: _buildMetricTile(
-                  title: 'Total Pemasukan',
+                  title: 'Total Income',
                   value: CurrencyFormatter.format(income),
                   color: AppColors.income,
                   icon: Icons.arrow_downward_rounded,
@@ -125,7 +125,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricTile(
-                  title: 'Total Pengeluaran',
+                  title: 'Total Expenses',
                   value: CurrencyFormatter.format(expense),
                   color: AppColors.expense,
                   icon: Icons.arrow_upward_rounded,
@@ -138,7 +138,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
             children: [
               Expanded(
                 child: _buildMetricTile(
-                  title: 'Tabungan Bersih',
+                  title: 'Net Savings',
                   value: CurrencyFormatter.format(savings),
                   color: savings >= 0 ? AppColors.accent : AppColors.error,
                   icon: Icons.savings_rounded,
@@ -147,7 +147,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricTile(
-                  title: 'Rata-rata Transaksi',
+                  title: 'Average Transaction',
                   value: CurrencyFormatter.formatCompact(avg),
                   color: AppColors.secondary,
                   icon: Icons.query_stats_rounded,
@@ -219,7 +219,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Distribusi Kategori',
+                  'Category Distribution',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -234,8 +234,8 @@ class AnalyticsView extends GetView<AnalyticsController> {
                   padding: const EdgeInsets.all(2),
                   child: Row(
                     children: [
-                      _buildTabToggle('Pengeluaran', 'expense'),
-                      _buildTabToggle('Pemasukan', 'income'),
+                      _buildTabToggle('Expense', 'expense'),
+                      _buildTabToggle('Income', 'income'),
                     ],
                   ),
                 ),
@@ -247,7 +247,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 36),
-                  child: Text('Belum ada data untuk periode ini', style: TextStyle(color: AppColors.textMuted)),
+                  child: Text('No data for this period', style: TextStyle(color: AppColors.textMuted)),
                 ),
               )
             else ...[

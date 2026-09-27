@@ -17,7 +17,7 @@ class DashboardView extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     final storage = Get.find<StorageService>();
     final user = storage.user;
-    final userName = user?['name'] ?? 'Pengguna';
+    final userName = user?['name'] ?? 'User';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -103,7 +103,7 @@ class DashboardView extends GetView<DashboardController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Halo, $userName 👋',
+                'Hello, $userName 👋',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
@@ -113,7 +113,7 @@ class DashboardView extends GetView<DashboardController> {
               ),
               const SizedBox(height: 2),
               const Text(
-                'Pantau & kendalikan finansialmu',
+                'Track & control your finances',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
             ],
@@ -122,7 +122,7 @@ class DashboardView extends GetView<DashboardController> {
         // Settings Button
         IconButton(
           icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
-          tooltip: 'Pengaturan & Akun',
+          tooltip: 'Settings & Account',
           onPressed: () => Get.toNamed(Routes.settings),
         ),
       ],
@@ -131,11 +131,11 @@ class DashboardView extends GetView<DashboardController> {
 
   Widget _buildPeriodSelector() {
     final periods = [
-      {'key': 'Day', 'label': 'Hari Ini'},
-      {'key': 'Week', 'label': 'Minggu Ini'},
-      {'key': 'Month', 'label': 'Bulan Ini'},
-      {'key': 'Year', 'label': 'Tahun Ini'},
-      {'key': 'All', 'label': 'Semua'},
+      {'key': 'Day', 'label': 'Today'},
+      {'key': 'Week', 'label': 'This Week'},
+      {'key': 'Month', 'label': 'This Month'},
+      {'key': 'Year', 'label': 'This Year'},
+      {'key': 'All', 'label': 'All'},
     ];
 
     return Obx(() {
@@ -207,7 +207,7 @@ class DashboardView extends GetView<DashboardController> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Saldo Bersih',
+                  'Net Balance',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 Obx(() {
@@ -218,12 +218,12 @@ class DashboardView extends GetView<DashboardController> {
 
                   Color badgeColor = AppColors.income;
                   IconData badgeIcon = Icons.cloud_done_rounded;
-                  String badgeText = 'Tersinkron';
+                  String badgeText = 'Synced';
 
                   if (isSyncing) {
                     badgeColor = AppColors.secondary;
                     badgeIcon = Icons.sync_rounded;
-                    badgeText = 'Menyinkronkan...';
+                    badgeText = 'Syncing...';
                   } else if (!isOnline) {
                     badgeColor = AppColors.warning;
                     badgeIcon = Icons.wifi_off_rounded;
@@ -231,7 +231,7 @@ class DashboardView extends GetView<DashboardController> {
                   } else if (pending > 0) {
                     badgeColor = AppColors.warning;
                     badgeIcon = Icons.cloud_upload_outlined;
-                    badgeText = '$pending Tertunda';
+                    badgeText = '$pending Pending';
                   }
 
                   return Container(
@@ -286,7 +286,7 @@ class DashboardView extends GetView<DashboardController> {
                           children: [
                             Icon(Icons.arrow_downward_rounded, color: AppColors.income, size: 14),
                             SizedBox(width: 4),
-                            Text('Pemasukan', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                            Text('Income', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -319,7 +319,7 @@ class DashboardView extends GetView<DashboardController> {
                           children: [
                             Icon(Icons.arrow_upward_rounded, color: AppColors.expense, size: 14),
                             SizedBox(width: 4),
-                            Text('Pengeluaran', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                            Text('Expense', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -350,25 +350,25 @@ class DashboardView extends GetView<DashboardController> {
         _buildActionTile(
           icon: Icons.add_rounded,
           color: AppColors.primary,
-          label: 'Catat Baru',
+          label: 'Record',
           onTap: () => Get.toNamed(Routes.addTransaction),
         ),
         _buildActionTile(
           icon: Icons.document_scanner_rounded,
           color: AppColors.secondary,
-          label: 'Scan Struk',
+          label: 'Scan Receipt',
           onTap: () => Get.toNamed(Routes.addTransaction),
         ),
         _buildActionTile(
           icon: Icons.bar_chart_rounded,
           color: AppColors.accent,
-          label: 'Analitik',
+          label: 'Analytics',
           onTap: () => Get.toNamed(Routes.analytics),
         ),
         _buildActionTile(
           icon: Icons.category_rounded,
           color: AppColors.warning,
-          label: 'Kategori',
+          label: 'Categories',
           onTap: () => Get.toNamed(Routes.categories),
         ),
       ],
@@ -417,7 +417,7 @@ class DashboardView extends GetView<DashboardController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Pengeluaran Terbesar',
+            'Top Expenses',
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 16,
@@ -492,7 +492,7 @@ class DashboardView extends GetView<DashboardController> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Transaksi Terkini',
+                'Recent Transactions',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16,
@@ -501,7 +501,7 @@ class DashboardView extends GetView<DashboardController> {
               ),
               TextButton(
                 onPressed: () => Get.toNamed(Routes.transactions),
-                child: const Text('Lihat Semua'),
+                child: const Text('View All'),
               ),
             ],
           ),
@@ -514,7 +514,7 @@ class DashboardView extends GetView<DashboardController> {
                   children: [
                     Icon(Icons.receipt_outlined, size: 40, color: AppColors.textMuted.withValues(alpha: 0.5)),
                     const SizedBox(height: 8),
-                    const Text('Belum ada transaksi di periode ini', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                    const Text('No transactions in this period', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                   ],
                 ),
               ),

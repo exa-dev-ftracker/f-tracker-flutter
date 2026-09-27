@@ -120,6 +120,7 @@ class SyncService extends GetxService {
     required String type,
     required String description,
     String? categoryId,
+    DateTime? date,
     required DateTime createdAt,
   }) async {
     final task = SyncTask(
@@ -131,6 +132,7 @@ class SyncService extends GetxService {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+        'date': (date ?? createdAt).toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
       },
       createdAt: DateTime.now(),
@@ -275,7 +277,7 @@ class SyncService extends GetxService {
         LoggerService.i('Successfully synced ${successfulTaskIds.length} tasks.', tag: 'SyncService');
         // Refresh active views to ensure fresh server state
         _refreshActiveControllers();
-        SnackbarService.success('${successfulTaskIds.length} transaksi offline berhasil disinkronkan ke server!');
+        SnackbarService.success('${successfulTaskIds.length} offline transactions successfully synced to server!');
       }
     } finally {
       isSyncing.value = false;
@@ -293,7 +295,7 @@ class SyncService extends GetxService {
         'type': payload['type'],
         'description': payload['description'],
         if (payload['category'] != null) 'category': payload['category'],
-        if (payload['createdAt'] != null) 'createdAt': payload['createdAt'],
+        'date': payload['date'] ?? payload['createdAt'],
       },
       options: Options(extra: {'silent': true}),
     );
@@ -365,12 +367,12 @@ class SyncService extends GetxService {
 
   Future<void> syncNow() async {
     if (!isOnline.value) {
-      SnackbarService.warning('Perangkat sedang offline. Sambungkan ke WiFi atau data seluler untuk menyinkronkan.');
+      SnackbarService.warning('Device is offline. Connect to Wi-Fi or cellular data to sync.');
       return;
     }
 
     if (isSyncing.value) {
-      SnackbarService.info('Proses sinkronisasi sedang berjalan...');
+      SnackbarService.info('Sync process is already in progress...');
       return;
     }
 
@@ -381,7 +383,7 @@ class SyncService extends GetxService {
       final now = DateTime.now();
       lastSyncedAt.value = now;
       await storageService.saveLastSyncedAt(now);
-      SnackbarService.success('Data sudah tersinkronkan dengan cloud server.');
+      SnackbarService.success('Data is synchronized with the cloud server.');
     }
   }
 

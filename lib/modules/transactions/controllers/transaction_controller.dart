@@ -149,13 +149,15 @@ class TransactionController extends GetxController {
 
     // 2. Generate temporary client ID and optimistic model
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
     final localTx = TransactionModel(
       id: tempId,
       amount: amount,
       type: type,
       description: description,
       category: selectedCat,
-      createdAt: txDate,
+      date: txDate,
+      createdAt: now,
       isPendingSync: true,
     );
 
@@ -172,10 +174,11 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
-        createdAt: txDate,
+        date: txDate,
+        createdAt: DateTime.now(),
       );
       AppHaptics.success();
-      SnackbarService.info('Mode Offline: Transaksi tersimpan lokal & akan disinkronkan saat online.');
+      SnackbarService.info('Offline Mode: Transaction saved locally & will sync when online.');
       return true;
     }
 
@@ -187,7 +190,7 @@ class TransactionController extends GetxController {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
-        'createdAt': txDate.toIso8601String(),
+        'date': txDate.toIso8601String(),
       });
 
       // Replace optimistic tempTx with server transaction
@@ -197,7 +200,7 @@ class TransactionController extends GetxController {
         transactions.refresh();
       }
       storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
-      SnackbarService.success('Transaksi berhasil dicatat!');
+      SnackbarService.success('Transaction recorded successfully!');
       return true;
     } catch (e) {
       // Network/server failure: fallback to offline sync queue
@@ -208,9 +211,10 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
-        createdAt: txDate,
+        date: txDate,
+        createdAt: DateTime.now(),
       );
-      SnackbarService.info('Koneksi terganggu. Transaksi tersimpan di perangkat.');
+      SnackbarService.info('Connection disrupted. Transaction saved on device.');
       return true;
     }
   }
@@ -224,7 +228,7 @@ class TransactionController extends GetxController {
       transactions.removeWhere((t) => t.id == tx.id);
       _recalculateSummary();
       storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
-      SnackbarService.success('Transaksi dihapus dari penyimpanan lokal');
+      SnackbarService.success('Transaction deleted from local storage');
       return true;
     }
 
@@ -237,7 +241,7 @@ class TransactionController extends GetxController {
     // 3. If offline, enqueue delete task
     if (!syncService.isOnline.value) {
       await syncService.enqueueDeleteTransaction(id: tx.id);
-      SnackbarService.info('Transaksi dihapus (antrean sinkronisasi offline)');
+      SnackbarService.info('Transaction deleted (offline sync queue)');
       return true;
     }
 
@@ -245,20 +249,20 @@ class TransactionController extends GetxController {
     try {
       final success = await repository.deleteTransaction(tx.id);
       if (success) {
-        SnackbarService.success('Transaksi berhasil dihapus');
+        SnackbarService.success('Transaction deleted successfully');
         return true;
       } else {
         // Rollback
         transactions.assignAll(previousList);
         _recalculateSummary();
-        SnackbarService.error('Gagal menghapus transaksi di server');
+        SnackbarService.error('Failed to delete transaction on server');
         return false;
       }
     } catch (e) {
       // Network issue: enqueue delete task
       LoggerService.w('Online delete failed, enqueuing delete: $e', tag: 'TransactionController');
       await syncService.enqueueDeleteTransaction(id: tx.id);
-      SnackbarService.info('Transaksi dihapus (antrean sinkronisasi offline)');
+      SnackbarService.info('Transaction deleted (offline sync queue)');
       return true;
     }
   }

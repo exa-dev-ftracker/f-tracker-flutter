@@ -133,13 +133,13 @@ class AddTransactionController extends GetxController {
       if (result.estimatedAmount != null) {
         AppHaptics.success();
         SnackbarService.success(
-          'Total terdeteksi: ${CurrencyFormatter.format(result.estimatedAmount!)}${result.merchantName != null ? " (${result.merchantName})" : ""}',
-          title: 'Struk Berhasil Dipindai',
+          'Total detected: ${CurrencyFormatter.format(result.estimatedAmount!)}${result.merchantName != null ? " (${result.merchantName})" : ""}',
+          title: 'Receipt Scanned Successfully',
         );
       } else {
         SnackbarService.info(
-          'Foto struk diproses. Silakan periksa atau lengkapi nominal transaksi.',
-          title: 'Hasil Scan Struk',
+          'Receipt image processed. Please review or adjust transaction details.',
+          title: 'Receipt Scan Result',
         );
       }
     }
@@ -147,7 +147,7 @@ class AddTransactionController extends GetxController {
 
   Future<void> submit() async {
     if (amountValue <= 0) {
-      Get.snackbar('Perhatian', 'Nominal harus lebih dari 0', snackPosition: SnackPosition.TOP);
+      Get.snackbar('Attention', 'Amount must be greater than 0', snackPosition: SnackPosition.TOP);
       return;
     }
 
@@ -155,7 +155,7 @@ class AddTransactionController extends GetxController {
     try {
       final desc = descController.text.trim().isNotEmpty
           ? descController.text.trim()
-          : (selectedType.value == 'Income' ? 'Pemasukan' : 'Pengeluaran');
+          : (selectedType.value == 'Income' ? 'Income' : 'Expense');
 
       final success = await txController.addTransaction(
         amount: amountValue,

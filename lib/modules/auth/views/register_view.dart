@@ -13,7 +13,7 @@ class RegisterView extends GetView<AuthController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Buat Akun'),
+        title: const Text('Create Account'),
         backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
@@ -24,7 +24,7 @@ class RegisterView extends GetView<AuthController> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Mulai Kelola Finansialmu',
+                  'Start Managing Your Finances',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 24,
@@ -33,7 +33,7 @@ class RegisterView extends GetView<AuthController> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Daftar akun F-Tracker gratis untuk melacak pengeluaran',
+                  'Create a free F-Tracker account to track your expenses',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 28),
@@ -43,7 +43,7 @@ class RegisterView extends GetView<AuthController> {
                   controller: controller.regNameController,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: const InputDecoration(
-                    labelText: 'Nama Lengkap',
+                    labelText: 'Full Name',
                     hintText: 'John Doe',
                     prefixIcon: Icon(Icons.person_outline_rounded),
                   ),
@@ -57,7 +57,7 @@ class RegisterView extends GetView<AuthController> {
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    hintText: 'nama@domain.com',
+                    hintText: 'name@domain.com',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                 ),
@@ -69,8 +69,8 @@ class RegisterView extends GetView<AuthController> {
                   obscureText: obscurePassword.value,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'Kata Sandi',
-                    hintText: 'Minimal 6 karakter',
+                    labelText: 'Password',
+                    hintText: 'At least 6 characters',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -92,7 +92,7 @@ class RegisterView extends GetView<AuthController> {
                           height: 22,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text('Daftar'),
+                      : const Text('Register'),
                 )),
                 const SizedBox(height: 20),
 
@@ -100,11 +100,11 @@ class RegisterView extends GetView<AuthController> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Sudah punya akun? ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    const Text('Already have an account? ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     GestureDetector(
                       onTap: () => Get.back(),
                       child: const Text(
-                        'Masuk di sini',
+                        'Sign in here',
                         style: TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),

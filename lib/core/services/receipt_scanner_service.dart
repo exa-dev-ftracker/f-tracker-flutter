@@ -52,7 +52,7 @@ class ReceiptScannerService {
               ),
             ),
             const Text(
-              'Pindai Struk Belanja (OCR Gratis)',
+              'Scan Receipt (Free OCR)',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -61,7 +61,7 @@ class ReceiptScannerService {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Diproses langsung di HP Anda dengan Google ML Kit tanpa kuota server/kartu kredit.',
+              'Processed on-device with Google ML Kit with zero server quota or credit card required.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(height: 20),
@@ -74,8 +74,8 @@ class ReceiptScannerService {
                 ),
                 child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
               ),
-              title: const Text('Foto Struk dengan Kamera', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Arahkan kamera ke struk kasir/belanja', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              title: const Text('Take Photo with Camera', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Point camera at receipt or bill', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               onTap: () {
                 AppHaptics.selection();
                 Get.back(result: ImageSource.camera);
@@ -91,8 +91,8 @@ class ReceiptScannerService {
                 ),
                 child: const Icon(Icons.photo_library_rounded, color: AppColors.secondary),
               ),
-              title: const Text('Pilih dari Galeri Foto', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Gunakan foto struk yang sudah ada', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              title: const Text('Choose from Photo Gallery', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Use an existing receipt photo', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               onTap: () {
                 AppHaptics.selection();
                 Get.back(result: ImageSource.gallery);
@@ -114,7 +114,7 @@ class ReceiptScannerService {
   }
 
   static Future<ScannedReceiptResult?> scanFromCamera() async {
-    final granted = await PermissionService.requestCamera(reason: 'memindai struk belanja secara otomatis');
+    final granted = await PermissionService.requestCamera(reason: 'automatically scanning receipts');
     if (!granted) return null;
 
     try {
@@ -127,7 +127,7 @@ class ReceiptScannerService {
       return await _processReceiptImage(image.path);
     } catch (e) {
       LoggerService.e('Camera pick failed: $e', tag: 'ReceiptScanner');
-      SnackbarService.error('Gagal membuka kamera: $e');
+      SnackbarService.error('Failed to open camera: $e');
       return null;
     }
   }
@@ -143,7 +143,7 @@ class ReceiptScannerService {
       return await _processReceiptImage(image.path);
     } catch (e) {
       LoggerService.e('Gallery pick failed: $e', tag: 'ReceiptScanner');
-      SnackbarService.error('Gagal mengambil foto dari galeri: $e');
+      SnackbarService.error('Failed to select photo from gallery: $e');
       return null;
     }
   }

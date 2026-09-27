@@ -7,35 +7,35 @@ import 'snackbar_service.dart';
 class PermissionService {
   PermissionService._();
 
-  static Future<bool> requestCamera({String reason = 'memindai struk belanja'}) async {
+  static Future<bool> requestCamera({String reason = 'scanning receipts'}) async {
     final status = await Permission.camera.status;
     if (status.isGranted) return true;
 
     if (status.isPermanentlyDenied) {
-      _showSettingsDialog(title: 'Izin Kamera', message: 'Izin kamera diperlukan untuk $reason.');
+      _showSettingsDialog(title: 'Camera Permission', message: 'Camera permission is required for $reason.');
       return false;
     }
 
     final result = await Permission.camera.request();
     if (!result.isGranted) {
-      SnackbarService.warning('Izin kamera diperlukan untuk $reason.');
+      SnackbarService.warning('Camera permission is required for $reason.');
       return false;
     }
     return true;
   }
 
-  static Future<bool> requestPhotos({String reason = 'mengunggah bukti struk'}) async {
+  static Future<bool> requestPhotos({String reason = 'uploading receipts'}) async {
     final status = await Permission.photos.status;
     if (status.isGranted) return true;
 
     if (status.isPermanentlyDenied) {
-      _showSettingsDialog(title: 'Izin Galeri Foto', message: 'Izin galeri diperlukan untuk $reason.');
+      _showSettingsDialog(title: 'Photo Gallery Permission', message: 'Gallery permission is required for $reason.');
       return false;
     }
 
     final result = await Permission.photos.request();
     if (!result.isGranted) {
-      SnackbarService.warning('Izin foto diperlukan untuk $reason.');
+      SnackbarService.warning('Photo permission is required for $reason.');
       return false;
     }
     return true;
@@ -50,7 +50,7 @@ class PermissionService {
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
@@ -58,7 +58,7 @@ class PermissionService {
               Get.back();
               openAppSettings();
             },
-            child: const Text('Buka Pengaturan'),
+            child: const Text('Open Settings'),
           ),
         ],
       ),

@@ -15,7 +15,7 @@ class CategoriesView extends GetView<CategoryController> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Kelola Kategori'),
+          title: const Text('Manage Categories'),
           backgroundColor: AppColors.surface,
           bottom: const TabBar(
             indicatorColor: AppColors.primary,
@@ -23,8 +23,8 @@ class CategoriesView extends GetView<CategoryController> {
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
             tabs: [
-              Tab(text: 'Pengeluaran'),
-              Tab(text: 'Pemasukan'),
+              Tab(text: 'Expense'),
+              Tab(text: 'Income'),
             ],
           ),
         ),
@@ -32,7 +32,7 @@ class CategoriesView extends GetView<CategoryController> {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Tambah Kategori'),
+          label: const Text('Add Category'),
           onPressed: () => _showAddCategoryDialog(context),
         ),
         body: TabBarView(
@@ -63,7 +63,7 @@ class CategoriesView extends GetView<CategoryController> {
               Icon(Icons.category_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
               const SizedBox(height: 12),
               Text(
-                'Belum ada kategori ${type == "income" ? "pemasukan" : "pengeluaran"}',
+                'No ${type == "income" ? "income" : "expense"} categories yet',
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
               ),
             ],
@@ -105,7 +105,7 @@ class CategoriesView extends GetView<CategoryController> {
                 ),
               ),
               subtitle: Text(
-                cat.type == 'income' ? 'Pemasukan' : 'Pengeluaran',
+                cat.type == 'income' ? 'Income' : 'Expense',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
               trailing: IconButton(
@@ -142,7 +142,7 @@ class CategoriesView extends GetView<CategoryController> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Tambah Kategori Baru',
+                'Add New Category',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
@@ -155,7 +155,7 @@ class CategoriesView extends GetView<CategoryController> {
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: const Center(child: Text('Pengeluaran')),
+                      label: const Center(child: Text('Expense')),
                       selected: selectedType.value == 'expense',
                       onSelected: (_) => selectedType.value = 'expense',
                       selectedColor: AppColors.expense.withValues(alpha: 0.2),
@@ -164,7 +164,7 @@ class CategoriesView extends GetView<CategoryController> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ChoiceChip(
-                      label: const Center(child: Text('Pemasukan')),
+                      label: const Center(child: Text('Income')),
                       selected: selectedType.value == 'income',
                       onSelected: (_) => selectedType.value = 'income',
                       selectedColor: AppColors.income.withValues(alpha: 0.2),
@@ -178,13 +178,13 @@ class CategoriesView extends GetView<CategoryController> {
                 controller: nameCtrl,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: const InputDecoration(
-                  hintText: 'Nama Kategori (contoh: Kopi, Bioskop)',
-                  labelText: 'Nama Kategori',
+                  hintText: 'Category name (e.g. Coffee, Cinema)',
+                  labelText: 'Category Name',
                 ),
               ),
               const SizedBox(height: 16),
               // Color Picker Row
-              const Text('Warna Kategori', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const Text('Category Color', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
               Obx(() => Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -221,7 +221,7 @@ class CategoriesView extends GetView<CategoryController> {
                   );
                   if (success) Get.back();
                 },
-                child: const Text('Simpan Kategori'),
+                child: const Text('Save Category'),
               ),
             ],
           ),
@@ -236,17 +236,17 @@ class CategoriesView extends GetView<CategoryController> {
     Get.dialog(
       AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Hapus Kategori', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text('Yakin ingin menghapus kategori "${cat.name}"?', style: const TextStyle(color: AppColors.textSecondary)),
+        title: const Text('Delete Category', style: TextStyle(color: AppColors.textPrimary)),
+        content: Text('Are you sure you want to delete category "${cat.name}"?', style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Batal', style: TextStyle(color: AppColors.textMuted))),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () {
               Get.back();
               controller.deleteCategory(cat.id);
             },
-            child: const Text('Hapus'),
+            child: const Text('Delete'),
           ),
         ],
       ),

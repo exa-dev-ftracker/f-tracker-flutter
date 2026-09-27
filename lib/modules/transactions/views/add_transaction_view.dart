@@ -12,13 +12,13 @@ class AddTransactionView extends GetView<AddTransactionController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Catat Transaksi'),
+        title: const Text('Record Transaction'),
         backgroundColor: AppColors.surface,
         actions: [
           // Mobile Exclusive: Camera Receipt Scanner (ML Kit on-device)
           IconButton(
             icon: const Icon(Icons.document_scanner_rounded, color: AppColors.primaryLight),
-            tooltip: 'Pindai Struk dengan Kamera (AI OCR)',
+            tooltip: 'Scan Receipt with Camera (AI OCR)',
             onPressed: controller.scanReceipt,
           ),
           const SizedBox(width: 8),
@@ -52,7 +52,7 @@ class AddTransactionView extends GetView<AddTransactionController> {
                             ),
                             child: Center(
                               child: Text(
-                                'Pengeluaran',
+                                'Expense',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: !isIncome ? FontWeight.bold : FontWeight.w500,
@@ -74,7 +74,7 @@ class AddTransactionView extends GetView<AddTransactionController> {
                             ),
                             child: Center(
                               child: Text(
-                                'Pemasukan',
+                                'Income',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: isIncome ? FontWeight.bold : FontWeight.w500,
@@ -111,7 +111,7 @@ class AddTransactionView extends GetView<AddTransactionController> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Nominal Transaksi',
+                      'Transaction Amount',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
@@ -159,12 +159,12 @@ class AddTransactionView extends GetView<AddTransactionController> {
                 controller: controller.descController,
                 style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Keterangan transaksi (misal: Makan siang di warteg)...',
+                  hintText: 'Transaction note (e.g. Lunch at bistro)...',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textMuted),
-                    tooltip: 'Pilih Tanggal',
+                    tooltip: 'Select Date',
                     onPressed: () => controller.pickDate(context),
                   ),
                 ),
@@ -207,7 +207,7 @@ class AddTransactionView extends GetView<AddTransactionController> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Simpan Transaksi'),
+                          : const Text('Save Transaction'),
                     );
                   }),
                 ],

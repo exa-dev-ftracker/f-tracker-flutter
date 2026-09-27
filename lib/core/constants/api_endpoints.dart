@@ -30,6 +30,7 @@ class ApiEndpoints {
   // User Profile Settings
   static const String userMe = '/api/v1/user/me';
   static const String userSettings = '/api/v1/user/settings';
+  static const String userTimezone = '/api/v1/user/timezone';
   static const String userPhone = '/api/v1/user/phone';
   static const String userChatbot = '/api/v1/user/chatbot';
   static const String deleteAccount = '/api/v1/user/account';

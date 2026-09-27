@@ -30,17 +30,17 @@ class TransactionCard extends StatelessWidget {
         final confirm = await Get.dialog<bool>(
           AlertDialog(
             backgroundColor: AppColors.surface,
-            title: const Text('Hapus Transaksi', style: TextStyle(color: AppColors.textPrimary)),
+            title: const Text('Delete Transaction', style: TextStyle(color: AppColors.textPrimary)),
             content: Text(
-              'Yakin ingin menghapus "${transaction.description}" sebesar ${CurrencyFormatter.format(transaction.amount)}?',
+              'Are you sure you want to delete "${transaction.description}" of ${CurrencyFormatter.format(transaction.amount)}?',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             actions: [
-              TextButton(onPressed: () => Get.back(result: false), child: const Text('Batal', style: TextStyle(color: AppColors.textMuted))),
+              TextButton(onPressed: () => Get.back(result: false), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                 onPressed: () => Get.back(result: true),
-                child: const Text('Hapus'),
+                child: const Text('Delete'),
               ),
             ],
           ),
@@ -62,7 +62,7 @@ class TransactionCard extends StatelessWidget {
           children: [
             Icon(Icons.delete_forever_rounded, color: Colors.white, size: 24),
             SizedBox(width: 8),
-            Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
           ],
         ),
       ),
@@ -113,7 +113,7 @@ class TransactionCard extends StatelessWidget {
                       Text(
                         transaction.description.isNotEmpty
                             ? transaction.description
-                            : (transaction.category?.name ?? 'Transaksi'),
+                            : (transaction.category?.name ?? 'Transaction'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -144,7 +144,7 @@ class TransactionCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           Text(
-                            CurrencyFormatter.formatDate(transaction.createdAt),
+                            CurrencyFormatter.formatDate(transaction.transactionDate),
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 11,

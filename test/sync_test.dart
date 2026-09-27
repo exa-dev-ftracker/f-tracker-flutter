@@ -10,7 +10,8 @@ void main() {
         id: 'temp_1727400000000',
         amount: 50000,
         type: 'Expense',
-        description: 'Beli Kopi Offline',
+        description: 'Offline Coffee',
+        date: DateTime.now(),
         createdAt: DateTime.now(),
         isPendingSync: true,
       );
@@ -24,7 +25,7 @@ void main() {
 
       final restored = TransactionModel.fromJson(json);
       expect(restored.isPendingSync, isTrue);
-      expect(restored.description, 'Beli Kopi Offline');
+      expect(restored.description, 'Offline Coffee');
     });
 
     test('SyncTask serializes and deserializes properly', () {
@@ -35,7 +36,7 @@ void main() {
           'client_id': 'temp_999',
           'amount': 25000,
           'type': 'Expense',
-          'description': 'Makan Siang',
+          'description': 'Lunch',
         },
         createdAt: DateTime.now(),
       );
@@ -54,7 +55,7 @@ void main() {
     test('CategoryModel retains category attributes', () {
       const cat = CategoryModel(
         id: 'cat_1',
-        name: 'Makanan',
+        name: 'Food',
         type: 'expense',
         color: '#EF4444',
         icon: 'utensils',
@@ -62,7 +63,7 @@ void main() {
 
       final json = cat.toJson();
       final restored = CategoryModel.fromJson(json);
-      expect(restored.name, 'Makanan');
+      expect(restored.name, 'Food');
       expect(restored.color, '#EF4444');
     });
   });

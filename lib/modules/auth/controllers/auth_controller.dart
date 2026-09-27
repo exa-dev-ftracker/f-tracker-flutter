@@ -41,7 +41,7 @@ class AuthController extends GetxController {
     final password = loginPasswordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      SnackbarService.warning('Mohon isi email dan kata sandi.');
+      SnackbarService.warning('Please enter your email and password.');
       return;
     }
 
@@ -66,7 +66,7 @@ class AuthController extends GetxController {
       }
 
       AppHaptics.success();
-      SnackbarService.success('Selamat datang kembali!');
+      SnackbarService.success('Welcome back!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
       LoggerService.e('Login failed: $e', tag: 'AuthController');
@@ -81,7 +81,7 @@ class AuthController extends GetxController {
     final password = regPasswordController.text;
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      SnackbarService.warning('Mohon lengkapi semua kolom pendaftaran.');
+      SnackbarService.warning('Please fill in all registration fields.');
       return;
     }
 
@@ -98,7 +98,7 @@ class AuthController extends GetxController {
       await storageService.saveUser(user.toJson());
 
       AppHaptics.success();
-      SnackbarService.success('Pendaftaran berhasil!');
+      SnackbarService.success('Registration successful!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
       LoggerService.e('Registration failed: $e', tag: 'AuthController');

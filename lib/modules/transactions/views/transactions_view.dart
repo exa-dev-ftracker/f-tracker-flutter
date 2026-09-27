@@ -15,12 +15,12 @@ class TransactionsView extends GetView<TransactionController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Daftar Transaksi'),
+        title: const Text('Transactions'),
         backgroundColor: AppColors.surface,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Segarkan data',
+            tooltip: 'Refresh data',
             onPressed: () => controller.fetchTransactions(),
           ),
           const SizedBox(width: 4),
@@ -30,7 +30,7 @@ class TransactionsView extends GetView<TransactionController> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 4,
-        tooltip: 'Catat Transaksi Baru',
+        tooltip: 'Record New Transaction',
         onPressed: () => Get.toNamed(Routes.addTransaction),
         child: const Icon(Icons.add_rounded, size: 28),
       ),
@@ -51,7 +51,7 @@ class TransactionsView extends GetView<TransactionController> {
                   onChanged: controller.onSearchChanged,
                   style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Cari transaksi...',
+                    hintText: 'Search transactions...',
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
@@ -70,11 +70,11 @@ class TransactionsView extends GetView<TransactionController> {
                 // Type Filter Pills
                 Obx(() => Row(
                   children: [
-                    _buildFilterChip('Semua', ''),
+                    _buildFilterChip('All', ''),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Pengeluaran', 'Expense'),
+                    _buildFilterChip('Expense', 'Expense'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Pemasukan', 'Income'),
+                    _buildFilterChip('Income', 'Income'),
                   ],
                 )),
               ],
@@ -89,7 +89,7 @@ class TransactionsView extends GetView<TransactionController> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${controller.transactions.length} Transaksi',
+                  '${controller.transactions.length} Transactions',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
                 Row(
@@ -127,12 +127,12 @@ class TransactionsView extends GetView<TransactionController> {
                         Icon(Icons.receipt_long_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
                         const SizedBox(height: 14),
                         const Text(
-                          'Belum ada transaksi',
+                          'No transactions yet',
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Ketuk tombol + untuk mulai mencatat keuangan',
+                          'Tap the + button to record a transaction',
                           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                         ),
                       ],

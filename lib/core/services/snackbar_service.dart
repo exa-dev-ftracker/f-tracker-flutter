@@ -5,7 +5,7 @@ import '../theme/app_colors.dart';
 class SnackbarService {
   SnackbarService._();
 
-  static void success(String message, {String title = 'Berhasil'}) {
+  static void success(String message, {String title = 'Success'}) {
     Get.snackbar(
       title,
       message,
@@ -21,7 +21,7 @@ class SnackbarService {
     );
   }
 
-  static void error(String message, {String title = 'Gagal'}) {
+  static void error(String message, {String title = 'Failed'}) {
     Get.snackbar(
       title,
       message,
@@ -37,7 +37,7 @@ class SnackbarService {
     );
   }
 
-  static void warning(String message, {String title = 'Perhatian'}) {
+  static void warning(String message, {String title = 'Warning'}) {
     Get.snackbar(
       title,
       message,
@@ -53,7 +53,7 @@ class SnackbarService {
     );
   }
 
-  static void info(String message, {String title = 'Informasi'}) {
+  static void info(String message, {String title = 'Information'}) {
     Get.snackbar(
       title,
       message,
