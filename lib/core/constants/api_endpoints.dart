@@ -1,0 +1,36 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class ApiEndpoints {
+  ApiEndpoints._();
+
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
+
+  // Auth Routes (/auth/v1)
+  static const String login = '/auth/v1/login';
+  static const String register = '/auth/v1/register';
+  static const String logout = '/auth/v1/logout';
+  static const String refresh = '/auth/v1/refresh';
+  static const String googleAuth = '/auth/v1/login-with-google';
+
+  // Protected Routes (/api/v1)
+  // Dashboard & Analytics
+  static const String dashboard = '/api/v1/dashboard';
+  static const String analytics = '/api/v1/analytics';
+
+  // Transactions
+  static const String transactions = '/api/v1/transactions';
+  static const String transactionSummary = '/api/v1/transactions/summary';
+  static String transactionDetail(String id) => '/api/v1/transactions/$id';
+
+  // Categories
+  static const String categories = '/api/v1/categories';
+  static String categoryDetail(String id) => '/api/v1/categories/$id';
+
+  // User Profile Settings
+  static const String userMe = '/api/v1/user/me';
+  static const String userSettings = '/api/v1/user/settings';
+  static const String userPhone = '/api/v1/user/phone';
+  static const String userChatbot = '/api/v1/user/chatbot';
+  static const String deleteAccount = '/api/v1/user/account';
+}
