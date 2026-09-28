@@ -3,6 +3,9 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_haptics.dart';
+import '../../transactions/controllers/transaction_controller.dart';
+import '../../transactions/models/transaction_model.dart';
+import '../../transactions/repositories/transaction_repository.dart';
 import '../models/dashboard_model.dart';
 import '../repositories/dashboard_repository.dart';
 
@@ -57,5 +60,49 @@ class DashboardController extends GetxController {
     AppHaptics.selection();
     selectedView.value = view;
     fetchDashboard();
+  }
+
+  Future<bool> deleteTransaction(TransactionModel tx) async {
+    // Optimistic removal from recent transactions
+    final currentData = dashboardData.value;
+    if (currentData != null) {
+      final updatedRecent = currentData.recentTransactions
+          .where((t) => t.id != tx.id)
+          .toList();
+      final diff = tx.isIncome ? -tx.amount : tx.amount;
+      final newIncome = tx.isIncome
+          ? (currentData.metrics.incomeTotal - tx.amount)
+          : currentData.metrics.incomeTotal;
+      final newExpense = !tx.isIncome
+          ? (currentData.metrics.expenseTotal - tx.amount)
+          : currentData.metrics.expenseTotal;
+      final newBalance = currentData.metrics.balance + diff;
+      final newCount = currentData.metrics.transactionCount > 0
+          ? currentData.metrics.transactionCount - 1
+          : 0;
+
+      dashboardData.value = DashboardData(
+        metrics: DashboardMetrics(
+          balance: newBalance,
+          incomeTotal: newIncome,
+          expenseTotal: newExpense,
+          transactionCount: newCount,
+        ),
+        recentTransactions: updatedRecent,
+        topExpenses: currentData.topExpenses,
+      );
+    }
+
+    if (Get.isRegistered<TransactionController>()) {
+      return await Get.find<TransactionController>().deleteTransaction(tx);
+    } else {
+      final txController = Get.put(
+        TransactionController(
+          repository: Get.find<TransactionRepository>(),
+          storageService: Get.find<StorageService>(),
+        ),
+      );
+      return await txController.deleteTransaction(tx);
+    }
   }
 }

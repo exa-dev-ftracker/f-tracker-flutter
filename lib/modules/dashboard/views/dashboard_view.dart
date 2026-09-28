@@ -552,7 +552,11 @@ class DashboardView extends GetView<DashboardController> {
               itemCount: recent.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                return TransactionCard(transaction: recent[index]);
+                final tx = recent[index];
+                return TransactionCard(
+                  transaction: tx,
+                  onDelete: () => controller.deleteTransaction(tx),
+                );
               },
             ),
         ],
