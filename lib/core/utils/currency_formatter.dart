@@ -140,11 +140,20 @@ class CurrencyFormatter {
       datePart = DateFormat('d MMM yyyy', 'en_US').format(calOnly);
     }
 
-    // 3. Format the creation time from createdAt in user's timezone
+    // 3. Format the creation time from createdAt in user's timezone if it has a real time component
     if (createdAt != null) {
-      final createdInTz = toUserTimezone(createdAt, timezone);
-      final timePart = DateFormat('HH:mm').format(createdInTz);
-      return '$datePart, $timePart';
+      DateTime createdUtc;
+      if (createdAt is DateTime) {
+        createdUtc = createdAt.toUtc();
+      } else {
+        createdUtc = (DateTime.tryParse(createdAt.toString()) ?? DateTime.now()).toUtc();
+      }
+      final hasRealTime = createdUtc.hour != 0 || createdUtc.minute != 0 || createdUtc.second != 0;
+      if (hasRealTime) {
+        final createdInTz = toUserTimezone(createdUtc, timezone);
+        final timePart = DateFormat('HH:mm').format(createdInTz);
+        return '$datePart, $timePart';
+      }
     }
 
     return datePart;

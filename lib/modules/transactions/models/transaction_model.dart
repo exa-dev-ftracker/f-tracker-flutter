@@ -52,23 +52,22 @@ class TransactionModel {
       cat = CategoryModel.fromJson(Map<String, dynamic>.from(json['category']));
     }
 
+    final createdStr = json['createdAt']?.toString();
     DateTime createdDt = DateTime.now();
-    if (json['createdAt'] != null) {
-      createdDt = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+    if (createdStr != null) {
+      createdDt = DateTime.tryParse(createdStr) ?? DateTime.now();
     }
 
+    final dateCandidate = (createdStr != null && createdStr.isNotEmpty) ? createdStr : json['date']?.toString();
     DateTime txDate = createdDt;
-    if (json['date'] != null) {
-      final dateStr = json['date'].toString();
-      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(dateStr);
+    if (dateCandidate != null) {
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(dateCandidate);
       if (match != null) {
         txDate = DateTime(
           int.parse(match.group(1)!),
           int.parse(match.group(2)!),
           int.parse(match.group(3)!),
         );
-      } else {
-        txDate = DateTime.tryParse(dateStr) ?? createdDt;
       }
     }
 
