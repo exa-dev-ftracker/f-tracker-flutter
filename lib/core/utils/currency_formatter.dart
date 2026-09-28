@@ -100,40 +100,79 @@ class CurrencyFormatter {
     ).subtract(Duration(minutes: (offsetHours * 60).round()));
   }
 
-  static String formatDate(dynamic date, [String? timezone]) {
-    if (date == null) return '';
-    final local = toUserTimezone(date, timezone);
-    final now = toUserTimezone(DateTime.now().toUtc(), timezone);
+  /// Formats transaction: date is the fixed calendar date (Year, Month, Day),
+  /// while time comes from createdAt converted to the user's timezone.
+  static String formatTransactionDateTime(dynamic txDate, dynamic createdAt, [String? timezone]) {
+    if (txDate == null && createdAt == null) return '';
 
-    if (local.year == now.year && local.month == now.month && local.day == now.day) {
-      return 'Today, ${DateFormat('HH:mm').format(local)}';
+    // 1. Resolve calendar date
+    DateTime calendarDate;
+    if (txDate is DateTime) {
+      calendarDate = txDate;
+    } else if (txDate != null && txDate.toString().isNotEmpty) {
+      final str = txDate.toString();
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        calendarDate = DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+        );
+      } else {
+        calendarDate = DateTime.tryParse(str) ?? DateTime.now();
+      }
+    } else {
+      calendarDate = DateTime.now();
     }
-    final yesterday = now.subtract(const Duration(days: 1));
-    if (local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day) {
-      return 'Yesterday, ${DateFormat('HH:mm').format(local)}';
+
+    // 2. Compare against "Today" and "Yesterday" in user's timezone
+    final nowInTz = toUserTimezone(DateTime.now().toUtc(), timezone);
+    final today = DateTime(nowInTz.year, nowInTz.month, nowInTz.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final calOnly = DateTime(calendarDate.year, calendarDate.month, calendarDate.day);
+
+    String datePart;
+    if (calOnly.year == today.year && calOnly.month == today.month && calOnly.day == today.day) {
+      datePart = 'Today';
+    } else if (calOnly.year == yesterday.year && calOnly.month == yesterday.month && calOnly.day == yesterday.day) {
+      datePart = 'Yesterday';
+    } else {
+      datePart = DateFormat('d MMM yyyy', 'en_US').format(calOnly);
     }
-    return DateFormat('d MMM yyyy, HH:mm', 'en_US').format(local);
+
+    // 3. Format the creation time from createdAt in user's timezone
+    if (createdAt != null) {
+      final createdInTz = toUserTimezone(createdAt, timezone);
+      final timePart = DateFormat('HH:mm').format(createdInTz);
+      return '$datePart, $timePart';
+    }
+
+    return datePart;
+  }
+
+  static String formatDate(dynamic date, [String? timezone]) {
+    return formatTransactionDateTime(date, date, timezone);
   }
 
   static String formatShortDate(dynamic date, [String? timezone]) {
     if (date == null) return '';
-    final local = toUserTimezone(date, timezone);
-    return DateFormat('d MMM', 'en_US').format(local);
+    DateTime dt;
+    if (date is DateTime) {
+      dt = date;
+    } else {
+      final str = date.toString();
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+      } else {
+        dt = DateTime.tryParse(str) ?? DateTime.now();
+      }
+    }
+    return DateFormat('d MMM', 'en_US').format(dt);
   }
 
   static String formatDisplayDate(dynamic date, [String? timezone]) {
-    if (date == null) return '';
-    final local = toUserTimezone(date, timezone);
-    final now = toUserTimezone(DateTime.now().toUtc(), timezone);
-
-    if (local.year == now.year && local.month == now.month && local.day == now.day) {
-      return 'Today, ${DateFormat('d MMM yyyy').format(local)}';
-    }
-    final yesterday = now.subtract(const Duration(days: 1));
-    if (local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day) {
-      return 'Yesterday, ${DateFormat('d MMM yyyy').format(local)}';
-    }
-    return DateFormat('EEE, d MMM yyyy').format(local);
+    return formatTransactionDateTime(date, null, timezone);
   }
 
   static DateTime nowInTimezone([String? timezone]) {

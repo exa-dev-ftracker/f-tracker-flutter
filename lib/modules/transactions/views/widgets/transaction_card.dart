@@ -148,7 +148,10 @@ class TransactionCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           Text(
-                            CurrencyFormatter.formatDate(transaction.transactionDate),
+                            CurrencyFormatter.formatTransactionDateTime(
+                              transaction.date,
+                              transaction.createdAt,
+                            ),
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 11,

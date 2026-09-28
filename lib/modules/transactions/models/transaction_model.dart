@@ -59,7 +59,17 @@ class TransactionModel {
 
     DateTime txDate = createdDt;
     if (json['date'] != null) {
-      txDate = DateTime.tryParse(json['date'].toString()) ?? createdDt;
+      final dateStr = json['date'].toString();
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(dateStr);
+      if (match != null) {
+        txDate = DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+        );
+      } else {
+        txDate = DateTime.tryParse(dateStr) ?? createdDt;
+      }
     }
 
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';

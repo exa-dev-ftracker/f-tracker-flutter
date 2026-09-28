@@ -1,4 +1,3 @@
-import 'package:f_tracker_mobile/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -168,14 +167,15 @@ class TransactionController extends GetxController {
     // 2. Generate temporary client ID and optimistic model
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     final now = DateTime.now().toUtc();
-    final utcDate = CurrencyFormatter.toUtcFromUserTimezone(txDate);
+    final calendarDate = DateTime(txDate.year, txDate.month, txDate.day);
+    final dateIso = DateTime.utc(txDate.year, txDate.month, txDate.day).toIso8601String();
     final localTx = TransactionModel(
       id: tempId,
       amount: amount,
       type: type,
       description: description,
       category: selectedCat,
-      date: utcDate,
+      date: calendarDate,
       createdAt: now,
       isPendingSync: true,
     );
@@ -195,7 +195,7 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
-        date: utcDate,
+        date: calendarDate,
         createdAt: now,
       );
       AppHaptics.success();
@@ -212,7 +212,7 @@ class TransactionController extends GetxController {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
-        'date': utcDate.toIso8601String(),
+        'date': dateIso,
       });
 
       // Replace optimistic tempTx with server transaction
@@ -239,7 +239,7 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
-        date: utcDate,
+        date: calendarDate,
         createdAt: now,
       );
       SnackbarService.success('Transaction recorded successfully!');

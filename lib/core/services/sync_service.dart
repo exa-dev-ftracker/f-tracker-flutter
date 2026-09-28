@@ -133,7 +133,9 @@ class SyncService extends GetxService {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
-        'date': (date ?? createdAt).toIso8601String(),
+        'date': date != null
+            ? DateTime.utc(date.year, date.month, date.day).toIso8601String()
+            : createdAt.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
       },
       createdAt: DateTime.now(),
