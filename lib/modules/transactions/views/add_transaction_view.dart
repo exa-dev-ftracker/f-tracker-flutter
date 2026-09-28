@@ -112,7 +112,7 @@ class AddTransactionView extends GetView<AddTransactionController> {
                                 Text(
                                   CurrencyFormatter.format(
                                     controller.amountValue,
-                                    prefix: isIncome ? '+Rp ' : '-Rp ',
+                                    prefix: isIncome ? '+' : '-',
                                   ),
                                   style: TextStyle(
                                     color: isIncome ? AppColors.income : AppColors.expense,

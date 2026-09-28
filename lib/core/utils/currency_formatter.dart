@@ -12,6 +12,9 @@ class CurrencyFormatter {
   static String format(num amount, {String? prefix}) {
     final formatted = _idrFormat.format(amount.abs());
     if (prefix != null) {
+      if (prefix.contains('Rp')) {
+        return '$prefix${formatted.replaceFirst('Rp ', '')}';
+      }
       return '$prefix$formatted';
     }
     if (amount < 0) {
