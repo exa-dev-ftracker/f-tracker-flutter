@@ -85,7 +85,7 @@ class TransactionCard extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: onTap,
+            onTap: onTap ?? () => _showDetailModal(context),
             child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
@@ -148,10 +148,7 @@ class TransactionCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           Text(
-                            CurrencyFormatter.formatTransactionDateTime(
-                              transaction.date,
-                              transaction.createdAt,
-                            ),
+                            CurrencyFormatter.formatTransactionDate(transaction.date),
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 11,
@@ -206,6 +203,189 @@ class TransactionCard extends StatelessWidget {
     ),
   );
 }
+
+  void _showDetailModal(BuildContext context) {
+    AppHaptics.selection();
+    final isIncome = transaction.isIncome;
+    final catColor = _parseColor(transaction.category?.color ?? (isIncome ? '#10B981' : '#F43F5E'));
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Title row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Transaction Details',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                  onPressed: () => Get.back(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Hero Amount Card
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isIncome ? AppColors.income : AppColors.expense).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      transaction.type.toUpperCase(),
+                      style: TextStyle(
+                        color: isIncome ? AppColors.income : AppColors.expense,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${isIncome ? "+" : "-"}${CurrencyFormatter.format(transaction.amount)}',
+                    style: TextStyle(
+                      color: isIncome ? AppColors.income : AppColors.textPrimary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (transaction.description.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      transaction.description,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Detail items
+            _buildDetailRow(
+              icon: Icons.category_outlined,
+              label: 'Category',
+              value: transaction.category?.name ?? 'General',
+              color: catColor,
+            ),
+            const SizedBox(height: 10),
+            _buildDetailRow(
+              icon: Icons.calendar_today_rounded,
+              label: 'Transaction Date',
+              value: CurrencyFormatter.formatDisplayDate(transaction.date),
+            ),
+            const SizedBox(height: 10),
+            _buildDetailRow(
+              icon: Icons.access_time_rounded,
+              label: 'Created At',
+              value: CurrencyFormatter.formatFullTimestamp(transaction.createdAt),
+            ),
+            const SizedBox(height: 10),
+            _buildDetailRow(
+              icon: transaction.isPendingSync ? Icons.cloud_off_rounded : Icons.cloud_done_rounded,
+              label: 'Status',
+              value: transaction.isPendingSync ? 'Offline (Pending Sync)' : 'Synced',
+              color: transaction.isPendingSync ? AppColors.warning : AppColors.success,
+            ),
+            if (onDelete != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.error.withValues(alpha: 0.15),
+                  foregroundColor: AppColors.error,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                label: const Text('Delete Transaction', style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  Get.back();
+                  onDelete!();
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color ?? AppColors.textMuted),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const Spacer(),
+          Text(
+            value,
+            style: TextStyle(
+              color: color ?? AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Color _parseColor(String hex) {
     try {

@@ -58,7 +58,9 @@ class TransactionModel {
       createdDt = DateTime.tryParse(createdStr) ?? DateTime.now();
     }
 
-    final dateCandidate = (createdStr != null && createdStr.isNotEmpty) ? createdStr : json['date']?.toString();
+    final dateCandidate = (json['date'] != null && json['date'].toString().isNotEmpty)
+        ? json['date'].toString()
+        : createdStr;
     DateTime txDate = createdDt;
     if (dateCandidate != null) {
       final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(dateCandidate);

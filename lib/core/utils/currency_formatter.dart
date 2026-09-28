@@ -100,16 +100,14 @@ class CurrencyFormatter {
     ).subtract(Duration(minutes: (offsetHours * 60).round()));
   }
 
-  /// Formats transaction: date is the fixed calendar date (Year, Month, Day),
-  /// while time comes from createdAt converted to the user's timezone.
-  static String formatTransactionDateTime(dynamic txDate, dynamic createdAt, [String? timezone]) {
-    if (txDate == null && createdAt == null) return '';
+  /// Formats transaction calendar date only: "Today", "Yesterday", or "29 Sep 2026"
+  static String formatTransactionDate(dynamic txDate, [String? timezone]) {
+    if (txDate == null) return '';
 
-    // 1. Resolve calendar date
     DateTime calendarDate;
     if (txDate is DateTime) {
       calendarDate = txDate;
-    } else if (txDate != null && txDate.toString().isNotEmpty) {
+    } else if (txDate.toString().isNotEmpty) {
       final str = txDate.toString();
       final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
       if (match != null) {
@@ -125,42 +123,29 @@ class CurrencyFormatter {
       calendarDate = DateTime.now();
     }
 
-    // 2. Compare against "Today" and "Yesterday" in user's timezone
     final nowInTz = toUserTimezone(DateTime.now().toUtc(), timezone);
     final today = DateTime(nowInTz.year, nowInTz.month, nowInTz.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final calOnly = DateTime(calendarDate.year, calendarDate.month, calendarDate.day);
 
-    String datePart;
     if (calOnly.year == today.year && calOnly.month == today.month && calOnly.day == today.day) {
-      datePart = 'Today';
+      return 'Today';
     } else if (calOnly.year == yesterday.year && calOnly.month == yesterday.month && calOnly.day == yesterday.day) {
-      datePart = 'Yesterday';
+      return 'Yesterday';
     } else {
-      datePart = DateFormat('d MMM yyyy', 'en_US').format(calOnly);
+      return DateFormat('d MMM yyyy', 'en_US').format(calOnly);
     }
+  }
 
-    // 3. Format the creation time from createdAt in user's timezone if it has a real time component
-    if (createdAt != null) {
-      DateTime createdUtc;
-      if (createdAt is DateTime) {
-        createdUtc = createdAt.toUtc();
-      } else {
-        createdUtc = (DateTime.tryParse(createdAt.toString()) ?? DateTime.now()).toUtc();
-      }
-      final hasRealTime = createdUtc.hour != 0 || createdUtc.minute != 0 || createdUtc.second != 0;
-      if (hasRealTime) {
-        final createdInTz = toUserTimezone(createdUtc, timezone);
-        final timePart = DateFormat('HH:mm').format(createdInTz);
-        return '$datePart, $timePart';
-      }
-    }
-
-    return datePart;
+  /// Formats full createdAt timestamp in user timezone for transaction detail: e.g. "29 Sep 2026, 05:37:12"
+  static String formatFullTimestamp(dynamic date, [String? timezone]) {
+    if (date == null) return '';
+    final local = toUserTimezone(date, timezone);
+    return DateFormat('d MMM yyyy, HH:mm:ss', 'en_US').format(local);
   }
 
   static String formatDate(dynamic date, [String? timezone]) {
-    return formatTransactionDateTime(date, date, timezone);
+    return formatTransactionDate(date, timezone);
   }
 
   static String formatShortDate(dynamic date, [String? timezone]) {
@@ -181,7 +166,20 @@ class CurrencyFormatter {
   }
 
   static String formatDisplayDate(dynamic date, [String? timezone]) {
-    return formatTransactionDateTime(date, null, timezone);
+    if (date == null) return '';
+    DateTime dt;
+    if (date is DateTime) {
+      dt = date;
+    } else {
+      final str = date.toString();
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+      } else {
+        dt = DateTime.tryParse(str) ?? DateTime.now();
+      }
+    }
+    return DateFormat('EEE, d MMM yyyy', 'en_US').format(dt);
   }
 
   static DateTime nowInTimezone([String? timezone]) {
