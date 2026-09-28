@@ -1,12 +1,18 @@
 name: Deploy iOS
 
 on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       upload_to_testflight:
         description: "Deploy to Apple TestFlight"
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -17,13 +23,14 @@ permissions:
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     uses: exa31/github-workflows/.github/workflows/flutter-ios.yml@main
     with:
       app_name: f-tracker-mobile
       flutter_version: "3.x"
       enable_semantic_release: false
       update_pubspec: false
-      upload_to_testflight: ${{ inputs.upload_to_testflight || false }}
+      upload_to_testflight: ${{ github.event_name == 'workflow_run' || inputs.upload_to_testflight == true }}
     secrets:
       ENV_FILE: ${{ secrets.ENV_FILE }}
       APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
