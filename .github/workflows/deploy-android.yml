@@ -51,6 +51,7 @@ jobs:
       upload_to_play_store: ${{ inputs.upload_to_play_store || false }}
       track: ${{ inputs.track || 'internal' }}
     secrets:
+      ENV_FILE: ${{ secrets.ENV_FILE }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

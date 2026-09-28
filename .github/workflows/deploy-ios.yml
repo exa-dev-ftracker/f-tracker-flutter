@@ -25,6 +25,7 @@ jobs:
       update_pubspec: false
       upload_to_testflight: ${{ inputs.upload_to_testflight || false }}
     secrets:
+      ENV_FILE: ${{ secrets.ENV_FILE }}
       APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
