@@ -1,5 +1,7 @@
+import 'package:f_tracker_mobile/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../core/services/logger_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
@@ -81,9 +83,14 @@ class TransactionController extends GetxController {
       _recalculateSummary();
 
       // Cache locally for offline availability
-      storageService.saveCachedTransactions(merged.map((e) => e.toJson()).toList());
+      storageService.saveCachedTransactions(
+        merged.map((e) => e.toJson()).toList(),
+      );
     } catch (e) {
-      LoggerService.e('Failed to fetch transactions, loading cache: $e', tag: 'TransactionController');
+      LoggerService.e(
+        'Failed to fetch transactions, loading cache: $e',
+        tag: 'TransactionController',
+      );
       _loadCachedTransactions();
     } finally {
       isLoading.value = false;
@@ -149,14 +156,15 @@ class TransactionController extends GetxController {
 
     // 2. Generate temporary client ID and optimistic model
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
+    final utcDate = CurrencyFormatter.toUtcFromUserTimezone(txDate);
     final localTx = TransactionModel(
       id: tempId,
       amount: amount,
       type: type,
       description: description,
       category: selectedCat,
-      date: txDate,
+      date: utcDate,
       createdAt: now,
       isPendingSync: true,
     );
@@ -164,7 +172,9 @@ class TransactionController extends GetxController {
     // Optimistic insert
     transactions.insert(0, localTx);
     _recalculateSummary();
-    storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
+    storageService.saveCachedTransactions(
+      transactions.map((e) => e.toJson()).toList(),
+    );
 
     // 3. If device is offline, enqueue sync task directly
     if (!syncService.isOnline.value) {
@@ -174,11 +184,13 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
-        date: txDate,
-        createdAt: DateTime.now(),
+        date: utcDate,
+        createdAt: now,
       );
       AppHaptics.success();
-      SnackbarService.info('Offline Mode: Transaction saved locally & will sync when online.');
+      SnackbarService.info(
+        'Offline Mode: Transaction saved locally & will sync when online.',
+      );
       return true;
     }
 
@@ -190,7 +202,7 @@ class TransactionController extends GetxController {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
-        'date': txDate.toIso8601String(),
+        'date': utcDate.toIso8601String(),
       });
 
       // Replace optimistic tempTx with server transaction
@@ -199,22 +211,29 @@ class TransactionController extends GetxController {
         transactions[index] = newTx.copyWith(isPendingSync: false);
         transactions.refresh();
       }
-      storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
+      storageService.saveCachedTransactions(
+        transactions.map((e) => e.toJson()).toList(),
+      );
       SnackbarService.success('Transaction recorded successfully!');
       return true;
     } catch (e) {
       // Network/server failure: fallback to offline sync queue
-      LoggerService.w('Online add failed, fallback to offline sync queue: $e', tag: 'TransactionController');
+      LoggerService.w(
+        'Online add failed, fallback to offline sync queue: $e',
+        tag: 'TransactionController',
+      );
       await syncService.enqueueCreateTransaction(
         tempId: tempId,
         amount: amount,
         type: type,
         description: description,
         categoryId: categoryId,
-        date: txDate,
-        createdAt: DateTime.now(),
+        date: utcDate,
+        createdAt: now,
       );
-      SnackbarService.info('Connection disrupted. Transaction saved on device.');
+      SnackbarService.info(
+        'Connection disrupted. Transaction saved on device.',
+      );
       return true;
     }
   }
@@ -227,7 +246,9 @@ class TransactionController extends GetxController {
       await syncService.removePendingCreate(tx.id);
       transactions.removeWhere((t) => t.id == tx.id);
       _recalculateSummary();
-      storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
+      storageService.saveCachedTransactions(
+        transactions.map((e) => e.toJson()).toList(),
+      );
       SnackbarService.success('Transaction deleted from local storage');
       return true;
     }
@@ -236,7 +257,9 @@ class TransactionController extends GetxController {
     final previousList = List<TransactionModel>.from(transactions);
     transactions.removeWhere((t) => t.id == tx.id);
     _recalculateSummary();
-    storageService.saveCachedTransactions(transactions.map((e) => e.toJson()).toList());
+    storageService.saveCachedTransactions(
+      transactions.map((e) => e.toJson()).toList(),
+    );
 
     // 3. If offline, enqueue delete task
     if (!syncService.isOnline.value) {
@@ -260,7 +283,10 @@ class TransactionController extends GetxController {
       }
     } catch (e) {
       // Network issue: enqueue delete task
-      LoggerService.w('Online delete failed, enqueuing delete: $e', tag: 'TransactionController');
+      LoggerService.w(
+        'Online delete failed, enqueuing delete: $e',
+        tag: 'TransactionController',
+      );
       await syncService.enqueueDeleteTransaction(id: tx.id);
       SnackbarService.info('Transaction deleted (offline sync queue)');
       return true;

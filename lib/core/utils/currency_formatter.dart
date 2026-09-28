@@ -1,4 +1,6 @@
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../services/storage_service.dart';
 
 class CurrencyFormatter {
   CurrencyFormatter._();
@@ -36,17 +38,73 @@ class CurrencyFormatter {
     return format(amount);
   }
 
-  static String formatDate(dynamic date) {
-    if (date == null) return '';
+  static String? _getUserTimezone() {
+    try {
+      if (Get.isRegistered<StorageService>()) {
+        return Get.find<StorageService>().user?['timezone']?.toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Converts a UTC DateTime (e.g. from server/database) to the user's configured timezone
+  static DateTime toUserTimezone(dynamic date, [String? timezone]) {
+    if (date == null) return DateTime.now();
     DateTime dt;
     if (date is DateTime) {
       dt = date;
     } else {
-      dt = DateTime.tryParse(date.toString()) ?? DateTime.now();
+      String str = date.toString();
+      if (!str.endsWith('Z') && !str.contains('+') && !RegExp(r'-\d\d:\d\d$').hasMatch(str)) {
+        str = '${str}Z';
+      }
+      dt = DateTime.tryParse(str) ?? DateTime.now();
     }
 
-    final local = dt.toLocal();
-    final now = DateTime.now();
+    final utc = dt.toUtc();
+    final tz = timezone ?? _getUserTimezone();
+    if (tz == null || tz.isEmpty) {
+      return dt.toLocal();
+    }
+    if (tz == 'UTC') {
+      return utc;
+    }
+    final offsetHours = getTimezoneOffsetHours(tz);
+    final shifted = utc.add(Duration(minutes: (offsetHours * 60).round()));
+    return DateTime(
+      shifted.year,
+      shifted.month,
+      shifted.day,
+      shifted.hour,
+      shifted.minute,
+      shifted.second,
+      shifted.millisecond,
+    );
+  }
+
+  /// Converts wall-clock DateTime in user's timezone to pure UTC for sending to API/DB
+  static DateTime toUtcFromUserTimezone(DateTime date, [String? timezone]) {
+    final tz = timezone ?? _getUserTimezone();
+    if (tz == null || tz.isEmpty || tz == 'UTC') {
+      return date.toUtc();
+    }
+    final offsetHours = getTimezoneOffsetHours(tz);
+    return DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+      date.hour,
+      date.minute,
+      date.second,
+      date.millisecond,
+    ).subtract(Duration(minutes: (offsetHours * 60).round()));
+  }
+
+  static String formatDate(dynamic date, [String? timezone]) {
+    if (date == null) return '';
+    final local = toUserTimezone(date, timezone);
+    final now = toUserTimezone(DateTime.now().toUtc(), timezone);
+
     if (local.year == now.year && local.month == now.month && local.day == now.day) {
       return 'Today, ${DateFormat('HH:mm').format(local)}';
     }
@@ -57,28 +115,17 @@ class CurrencyFormatter {
     return DateFormat('d MMM yyyy, HH:mm', 'en_US').format(local);
   }
 
-  static String formatShortDate(dynamic date) {
+  static String formatShortDate(dynamic date, [String? timezone]) {
     if (date == null) return '';
-    DateTime dt;
-    if (date is DateTime) {
-      dt = date;
-    } else {
-      dt = DateTime.tryParse(date.toString()) ?? DateTime.now();
-    }
-    return DateFormat('d MMM', 'en_US').format(dt.toLocal());
+    final local = toUserTimezone(date, timezone);
+    return DateFormat('d MMM', 'en_US').format(local);
   }
 
-  static String formatDisplayDate(dynamic date) {
+  static String formatDisplayDate(dynamic date, [String? timezone]) {
     if (date == null) return '';
-    DateTime dt;
-    if (date is DateTime) {
-      dt = date;
-    } else {
-      dt = DateTime.tryParse(date.toString()) ?? DateTime.now();
-    }
+    final local = toUserTimezone(date, timezone);
+    final now = toUserTimezone(DateTime.now().toUtc(), timezone);
 
-    final local = dt.toLocal();
-    final now = DateTime.now();
     if (local.year == now.year && local.month == now.month && local.day == now.day) {
       return 'Today, ${DateFormat('d MMM yyyy').format(local)}';
     }
@@ -90,9 +137,7 @@ class CurrencyFormatter {
   }
 
   static DateTime nowInTimezone([String? timezone]) {
-    final utcNow = DateTime.now().toUtc();
-    final offsetHours = getTimezoneOffsetHours(timezone);
-    return utcNow.add(Duration(minutes: (offsetHours * 60).round()));
+    return toUserTimezone(DateTime.now().toUtc(), timezone);
   }
 
   static double getTimezoneOffsetHours(String? tz) {
