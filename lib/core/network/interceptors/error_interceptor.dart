@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../services/crash_reporter_service.dart';
 import '../../services/logger_service.dart';
 import '../../services/snackbar_service.dart';
 
@@ -17,6 +18,17 @@ class ErrorInterceptor extends Interceptor {
     } else if (err.type == DioExceptionType.connectionError) {
       message = 'Tidak dapat terhubung ke server backend F-Tracker.';
     }
+
+    // Record HTTP error to Loki
+    try {
+      CrashReporterService.instance.recordHttpError(
+        method: err.requestOptions.method,
+        path: err.requestOptions.path,
+        statusCode: err.response?.statusCode,
+        errorMessage: message,
+        responseBody: err.response?.data,
+      );
+    } catch (_) {}
 
     // Do not show snackbar for 401 or if request was marked as silent
     final isSilent = err.requestOptions.extra['silent'] == true;

@@ -63,6 +63,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.17.1
   google_sign_in: ^6.2.2
   sign_in_with_apple: ^8.2.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,5 @@
 import 'package:logger/logger.dart';
+import 'crash_reporter_service.dart';
 
 class LoggerService {
   LoggerService._();
@@ -19,9 +20,22 @@ class LoggerService {
   static void i(String message, {String? tag}) =>
       _logger.i('${tag != null ? "[$tag] " : ""}$message');
 
-  static void w(String message, {String? tag}) =>
-      _logger.w('${tag != null ? "[$tag] " : ""}$message');
+  static void w(String message, {String? tag}) {
+    _logger.w('${tag != null ? "[$tag] " : ""}$message');
+    try {
+      CrashReporterService.instance.recordLog(message, level: 'WARN', tag: tag ?? 'APP');
+    } catch (_) {}
+  }
 
-  static void e(String message, {dynamic error, StackTrace? stackTrace, String? tag}) =>
-      _logger.e('${tag != null ? "[$tag] " : ""}$message', error: error, stackTrace: stackTrace);
+  static void e(String message, {dynamic error, StackTrace? stackTrace, String? tag}) {
+    _logger.e('${tag != null ? "[$tag] " : ""}$message', error: error, stackTrace: stackTrace);
+    try {
+      CrashReporterService.instance.recordError(
+        error ?? message,
+        stackTrace,
+        reason: message,
+        tag: tag ?? 'ERROR',
+      );
+    } catch (_) {}
+  }
 }

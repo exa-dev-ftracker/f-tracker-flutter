@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'core/constants/app_constants.dart';
 import 'core/network/api_client.dart';
+import 'core/services/crash_reporter_service.dart';
 import 'core/services/logger_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/sync_service.dart';
@@ -19,6 +21,30 @@ Future<void> main() async {
   } catch (e) {
     LoggerService.w('.env could not be loaded, using defaults: $e', tag: 'Bootstrap');
   }
+
+  // 2. Initialize Crash Reporter & Offline Observability Service (Grafana Loki)
+  try {
+    await CrashReporterService.instance.initialize();
+  } catch (e) {
+    LoggerService.w('CrashReporterService initialization warning: $e', tag: 'Bootstrap');
+  }
+
+  // 3. Global Flutter UI Framework Error Handler
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    CrashReporterService.instance.recordFlutterFatalError(details);
+  };
+
+  // 4. Global Asynchronous Unhandled Error Handler
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    CrashReporterService.instance.recordError(
+      error,
+      stack,
+      fatal: true,
+      reason: 'PlatformDispatcher Unhandled Async Error',
+    );
+    return true;
+  };
 
   // 2. Initialize Singletons / Core Services
   final storageService = await StorageService().init();
