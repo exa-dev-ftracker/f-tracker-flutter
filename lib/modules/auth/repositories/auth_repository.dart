@@ -56,13 +56,27 @@ class AuthRepository {
   }) async {
     final response = await apiClient.post(ApiEndpoints.appleAuth, data: {
       'code': code,
-      'identityToken': ?identityToken,
-      'userIdentifier': ?userIdentifier,
-      'email': ?email,
-      'name': ?name,
+      'identityToken': identityToken,
+      'userIdentifier': userIdentifier,
+      'email': email,
+      'name': name,
     });
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
   }
+
+  Future<AuthResponseModel> refreshToken(String token) async {
+    final response = await apiClient.post(
+      ApiEndpoints.refresh,
+      data: {
+        'refreshToken': token,
+        'refresh_token': token,
+      },
+    );
+    final data = response.data;
+    final item = data is Map && data['data'] != null ? data['data'] : data;
+    return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
+  }
 }
+
