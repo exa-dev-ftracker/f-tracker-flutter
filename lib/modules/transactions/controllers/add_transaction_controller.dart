@@ -171,6 +171,16 @@ class AddTransactionController extends GetxController {
     }
   }
 
+  void resetForm() {
+    rawAmount.value = '0';
+    descController.clear();
+    selectedCategoryId.value = null;
+    selectedType.value = 'Expense';
+    final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
+    final userTz = storage?.user?['timezone']?.toString();
+    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
+  }
+
   Future<void> submit() async {
     if (amountValue <= 0) {
       Get.snackbar('Attention', 'Amount must be greater than 0', snackPosition: SnackPosition.TOP);
@@ -192,7 +202,14 @@ class AddTransactionController extends GetxController {
       );
 
       if (success) {
-        Get.back();
+        resetForm();
+        if (Get.context != null && Navigator.canPop(Get.context!)) {
+          Navigator.pop(Get.context!);
+        } else if (Get.key.currentState?.canPop() ?? false) {
+          Get.key.currentState?.pop();
+        } else {
+          Get.back();
+        }
       }
     } finally {
       isSubmitting.value = false;

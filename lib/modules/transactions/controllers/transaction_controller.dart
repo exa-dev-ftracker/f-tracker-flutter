@@ -7,7 +7,9 @@ import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_haptics.dart';
+import '../../analytics/controllers/analytics_controller.dart';
 import '../../categories/models/category_model.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 
@@ -133,6 +135,15 @@ class TransactionController extends GetxController {
     fetchTransactions();
   }
 
+  void notifyGlobalStateChange() {
+    if (Get.isRegistered<DashboardController>()) {
+      Get.find<DashboardController>().fetchDashboard();
+    }
+    if (Get.isRegistered<AnalyticsController>()) {
+      Get.find<AnalyticsController>().fetchAnalytics();
+    }
+  }
+
   Future<bool> addTransaction({
     required double amount,
     required String type,
@@ -191,6 +202,7 @@ class TransactionController extends GetxController {
       SnackbarService.info(
         'Offline Mode: Transaction saved locally & will sync when online.',
       );
+      notifyGlobalStateChange();
       return true;
     }
 
@@ -215,6 +227,7 @@ class TransactionController extends GetxController {
         transactions.map((e) => e.toJson()).toList(),
       );
       SnackbarService.success('Transaction recorded successfully!');
+      notifyGlobalStateChange();
       return true;
     } catch (e) {
       // Network/server failure: fallback to offline sync queue
@@ -234,6 +247,7 @@ class TransactionController extends GetxController {
       SnackbarService.info(
         'Connection disrupted. Transaction saved on device.',
       );
+      notifyGlobalStateChange();
       return true;
     }
   }
@@ -250,6 +264,7 @@ class TransactionController extends GetxController {
         transactions.map((e) => e.toJson()).toList(),
       );
       SnackbarService.success('Transaction deleted from local storage');
+      notifyGlobalStateChange();
       return true;
     }
 
@@ -265,6 +280,7 @@ class TransactionController extends GetxController {
     if (!syncService.isOnline.value) {
       await syncService.enqueueDeleteTransaction(id: tx.id);
       SnackbarService.info('Transaction deleted (offline sync queue)');
+      notifyGlobalStateChange();
       return true;
     }
 
@@ -273,6 +289,7 @@ class TransactionController extends GetxController {
       final success = await repository.deleteTransaction(tx.id);
       if (success) {
         SnackbarService.success('Transaction deleted successfully');
+        notifyGlobalStateChange();
         return true;
       } else {
         // Rollback
@@ -289,6 +306,7 @@ class TransactionController extends GetxController {
       );
       await syncService.enqueueDeleteTransaction(id: tx.id);
       SnackbarService.info('Transaction deleted (offline sync queue)');
+      notifyGlobalStateChange();
       return true;
     }
   }

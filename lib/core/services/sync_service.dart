@@ -11,6 +11,7 @@ import 'storage_service.dart';
 import '../../modules/transactions/models/transaction_model.dart';
 import '../../modules/transactions/controllers/transaction_controller.dart';
 import '../../modules/dashboard/controllers/dashboard_controller.dart';
+import '../../modules/analytics/controllers/analytics_controller.dart';
 import '../../modules/categories/controllers/category_controller.dart';
 
 class SyncTask {
@@ -357,6 +358,9 @@ class SyncService extends GetxService {
     }
     if (Get.isRegistered<DashboardController>()) {
       Get.find<DashboardController>().fetchDashboard();
+    }
+    if (Get.isRegistered<AnalyticsController>()) {
+      Get.find<AnalyticsController>().fetchAnalytics();
     }
     if (Get.isRegistered<CategoryController>()) {
       Get.find<CategoryController>().fetchCategories();
