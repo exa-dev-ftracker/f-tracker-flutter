@@ -88,4 +88,36 @@ class CurrencyFormatter {
     }
     return DateFormat('EEE, d MMM yyyy').format(local);
   }
+
+  static DateTime nowInTimezone([String? timezone]) {
+    final utcNow = DateTime.now().toUtc();
+    final offsetHours = getTimezoneOffsetHours(timezone);
+    return utcNow.add(Duration(minutes: (offsetHours * 60).round()));
+  }
+
+  static double getTimezoneOffsetHours(String? tz) {
+    if (tz == null || tz.isEmpty) {
+      return DateTime.now().timeZoneOffset.inMinutes / 60.0;
+    }
+    switch (tz) {
+      case 'Asia/Jakarta':
+        return 7.0;
+      case 'Asia/Makassar':
+      case 'Asia/Singapore':
+        return 8.0;
+      case 'Asia/Jayapura':
+      case 'Asia/Tokyo':
+        return 9.0;
+      case 'Europe/London':
+        return 0.0;
+      case 'America/New_York':
+        return -5.0;
+      case 'America/Los_Angeles':
+        return -8.0;
+      case 'UTC':
+        return 0.0;
+      default:
+        return DateTime.now().timeZoneOffset.inMinutes / 60.0;
+    }
+  }
 }

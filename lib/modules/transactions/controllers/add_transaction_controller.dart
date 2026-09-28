@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/receipt_scanner_service.dart';
 import '../../../core/services/snackbar_service.dart';
+import '../../../core/services/storage_service.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../categories/controllers/category_controller.dart';
@@ -53,6 +54,10 @@ class AddTransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
+    final userTz = storage?.user?['timezone']?.toString();
+    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
+
     final args = Get.arguments;
     if (args is Map && args['scanned'] is ScannedReceiptResult) {
       _applyScannedResult(args['scanned'] as ScannedReceiptResult);
