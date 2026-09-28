@@ -67,4 +67,25 @@ class CurrencyFormatter {
     }
     return DateFormat('d MMM', 'en_US').format(dt.toLocal());
   }
+
+  static String formatDisplayDate(dynamic date) {
+    if (date == null) return '';
+    DateTime dt;
+    if (date is DateTime) {
+      dt = date;
+    } else {
+      dt = DateTime.tryParse(date.toString()) ?? DateTime.now();
+    }
+
+    final local = dt.toLocal();
+    final now = DateTime.now();
+    if (local.year == now.year && local.month == now.month && local.day == now.day) {
+      return 'Today, ${DateFormat('d MMM yyyy').format(local)}';
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day) {
+      return 'Yesterday, ${DateFormat('d MMM yyyy').format(local)}';
+    }
+    return DateFormat('EEE, d MMM yyyy').format(local);
+  }
 }

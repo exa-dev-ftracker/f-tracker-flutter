@@ -164,23 +164,88 @@ class AddTransactionView extends GetView<AddTransactionController> {
                           }),
                         ),
 
-                        // Note / Description Field & Date Picker
+                        // Transaction Date Selector
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                          child: Obx(() {
+                            final date = controller.selectedDate.value;
+                            final dateText = CurrencyFormatter.formatDisplayDate(date);
+
+                            return Material(
+                              color: AppColors.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: const BorderSide(color: AppColors.border),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: () => controller.pickDate(context),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.calendar_today_rounded,
+                                          size: 16,
+                                          color: AppColors.primaryLight,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'Transaction Date',
+                                            style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            dateText,
+                                            style: const TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                      const Icon(
+                                        Icons.edit_calendar_rounded,
+                                        size: 18,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+
+                        // Note / Description Field
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                           child: TextField(
                             controller: controller.descController,
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => FocusScope.of(context).unfocus(),
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               hintText: 'Transaction note (e.g. Lunch at bistro)...',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textMuted),
-                                tooltip: 'Select Date',
-                                onPressed: () => controller.pickDate(context),
-                              ),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              prefixIcon: Icon(Icons.edit_note_rounded, size: 20),
                             ),
                           ),
                         ),

@@ -133,7 +133,15 @@ class AddTransactionController extends GetxController {
       },
     );
     if (picked != null) {
-      selectedDate.value = picked;
+      final current = selectedDate.value;
+      selectedDate.value = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        current.hour,
+        current.minute,
+        current.second,
+      );
     }
   }
 
