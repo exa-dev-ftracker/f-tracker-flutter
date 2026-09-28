@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_haptics.dart';
+import '../../../core/utils/category_icon_helper.dart';
 import '../controllers/category_controller.dart';
 import '../models/category_model.dart';
 
@@ -95,7 +96,11 @@ class CategoriesView extends GetView<CategoryController> {
                   color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.label_rounded, color: color, size: 22),
+                child: Icon(
+                  CategoryIconHelper.getIconData(cat.icon, cat.name),
+                  color: color,
+                  size: 22,
+                ),
               ),
               title: Text(
                 cat.name,
@@ -124,6 +129,7 @@ class CategoriesView extends GetView<CategoryController> {
     final nameCtrl = TextEditingController();
     final selectedType = 'expense'.obs;
     final selectedColor = '#10B981'.obs;
+    final selectedIcon = 'i-heroicons-tag'.obs;
 
     final colorOptions = [
       '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B',
@@ -209,7 +215,48 @@ class CategoriesView extends GetView<CategoryController> {
                   );
                 }).toList(),
               )),
+              const SizedBox(height: 16),
+
+              // Icon Picker Row
+              const Text('Category Icon', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 8),
+              Obx(() {
+                final currentColor = _parseColor(selectedColor.value);
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: CategoryIconHelper.availableIcons.map((item) {
+                    final isSelected = selectedIcon.value == item.key;
+                    return GestureDetector(
+                      onTap: () {
+                        AppHaptics.selection();
+                        selectedIcon.value = item.key;
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isSelected ? currentColor.withValues(alpha: 0.25) : AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? currentColor : AppColors.border,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            item.iconData,
+                            color: isSelected ? currentColor : AppColors.textSecondary,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              }),
               const SizedBox(height: 24),
+
               // Submit Button
               ElevatedButton(
                 onPressed: () async {
@@ -219,6 +266,7 @@ class CategoriesView extends GetView<CategoryController> {
                     name: name,
                     type: selectedType.value,
                     color: selectedColor.value,
+                    icon: selectedIcon.value,
                   );
                   if (success) Get.back();
                 },

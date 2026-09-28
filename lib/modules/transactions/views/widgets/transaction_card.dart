@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
+import '../../../../core/utils/category_icon_helper.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../models/transaction_model.dart';
 
@@ -21,6 +22,10 @@ class TransactionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.isIncome;
     final catColor = _parseColor(transaction.category?.color ?? (isIncome ? '#10B981' : '#F43F5E'));
+    final catIcon = CategoryIconHelper.getIconData(
+      transaction.category?.icon,
+      transaction.category?.name ?? (isIncome ? 'Income' : 'Expense'),
+    );
 
     return Dismissible(
       key: ValueKey('tx_${transaction.id}'),
@@ -101,7 +106,7 @@ class TransactionCard extends StatelessWidget {
                   ),
                   child: Center(
                     child: Icon(
-                      isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                      catIcon,
                       color: catColor,
                       size: 22,
                     ),
@@ -131,18 +136,29 @@ class TransactionCard extends StatelessWidget {
                         children: [
                           if (transaction.category != null) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant,
+                                color: catColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text(
-                                transaction.category!.name,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    catIcon,
+                                    size: 11,
+                                    color: catColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    transaction.category!.name,
+                                    style: TextStyle(
+                                      color: catColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -208,6 +224,10 @@ class TransactionCard extends StatelessWidget {
     AppHaptics.selection();
     final isIncome = transaction.isIncome;
     final catColor = _parseColor(transaction.category?.color ?? (isIncome ? '#10B981' : '#F43F5E'));
+    final catIcon = CategoryIconHelper.getIconData(
+      transaction.category?.icon,
+      transaction.category?.name ?? (isIncome ? 'Income' : 'Expense'),
+    );
 
     Get.bottomSheet(
       Container(
@@ -308,7 +328,7 @@ class TransactionCard extends StatelessWidget {
 
             // Detail items
             _buildDetailRow(
-              icon: Icons.category_outlined,
+              icon: catIcon,
               label: 'Category',
               value: transaction.category?.name ?? 'General',
               color: catColor,

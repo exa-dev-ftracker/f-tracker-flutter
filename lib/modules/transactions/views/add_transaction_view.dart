@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/category_icon_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../controllers/add_transaction_controller.dart';
 
@@ -149,6 +150,11 @@ class AddTransactionView extends GetView<AddTransactionController> {
                                 final isSelected = selectedId == cat.id;
 
                                 return ChoiceChip(
+                                  avatar: Icon(
+                                    CategoryIconHelper.getIconData(cat.icon, cat.name),
+                                    size: 16,
+                                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                                  ),
                                   label: Text(cat.name),
                                   selected: isSelected,
                                   selectedColor: isIncome ? AppColors.income : AppColors.expense,

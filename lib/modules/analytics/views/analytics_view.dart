@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/category_icon_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../controllers/analytics_controller.dart';
 import '../models/analytics_model.dart';
@@ -289,14 +290,24 @@ class AnalyticsView extends GetView<AnalyticsController> {
                   final item = breakdownList[index];
                   final color = _parseColor(item.color);
 
-                  return Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 10),
+                    return Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              CategoryIconHelper.getIconData(item.icon, item.name),
+                              color: color,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           item.name,
