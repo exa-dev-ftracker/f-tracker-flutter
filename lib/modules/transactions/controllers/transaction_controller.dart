@@ -199,9 +199,7 @@ class TransactionController extends GetxController {
         createdAt: now,
       );
       AppHaptics.success();
-      SnackbarService.info(
-        'Offline Mode: Transaction saved locally & will sync when online.',
-      );
+      SnackbarService.success('Transaction recorded successfully!');
       notifyGlobalStateChange();
       return true;
     }
@@ -244,9 +242,7 @@ class TransactionController extends GetxController {
         date: utcDate,
         createdAt: now,
       );
-      SnackbarService.info(
-        'Connection disrupted. Transaction saved on device.',
-      );
+      SnackbarService.success('Transaction recorded successfully!');
       notifyGlobalStateChange();
       return true;
     }
@@ -263,7 +259,7 @@ class TransactionController extends GetxController {
       storageService.saveCachedTransactions(
         transactions.map((e) => e.toJson()).toList(),
       );
-      SnackbarService.success('Transaction deleted from local storage');
+      SnackbarService.success('Transaction deleted successfully');
       notifyGlobalStateChange();
       return true;
     }
@@ -279,7 +275,7 @@ class TransactionController extends GetxController {
     // 3. If offline, enqueue delete task
     if (!syncService.isOnline.value) {
       await syncService.enqueueDeleteTransaction(id: tx.id);
-      SnackbarService.info('Transaction deleted (offline sync queue)');
+      SnackbarService.success('Transaction deleted successfully');
       notifyGlobalStateChange();
       return true;
     }
@@ -305,7 +301,7 @@ class TransactionController extends GetxController {
         tag: 'TransactionController',
       );
       await syncService.enqueueDeleteTransaction(id: tx.id);
-      SnackbarService.info('Transaction deleted (offline sync queue)');
+      SnackbarService.success('Transaction deleted successfully');
       notifyGlobalStateChange();
       return true;
     }

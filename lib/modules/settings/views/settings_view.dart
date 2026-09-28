@@ -378,6 +378,33 @@ class SettingsView extends GetView<SettingsController> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Feature explanation
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.offline_bolt_rounded, size: 18, color: AppColors.primaryLight),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Seamless Offline Mode: Create, edit, and record transactions anytime without an internet connection. Data is safely saved on your device and synced automatically when back online.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
 
             // Manual Sync Button

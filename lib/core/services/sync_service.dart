@@ -278,7 +278,7 @@ class SyncService extends GetxService {
         LoggerService.i('Successfully synced ${successfulTaskIds.length} tasks.', tag: 'SyncService');
         // Refresh active views to ensure fresh server state
         _refreshActiveControllers();
-        SnackbarService.success('${successfulTaskIds.length} offline transactions successfully synced to server!');
+        SnackbarService.success('Data synchronized successfully');
       }
     } finally {
       isSyncing.value = false;

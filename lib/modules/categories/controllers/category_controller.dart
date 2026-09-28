@@ -88,7 +88,7 @@ class CategoryController extends GetxController {
         icon: icon,
       );
       AppHaptics.light();
-      SnackbarService.info('Category "$name" saved locally & queued for sync');
+      SnackbarService.success('Category "$name" successfully added');
       return true;
     }
 
@@ -114,7 +114,7 @@ class CategoryController extends GetxController {
         color: color,
         icon: icon,
       );
-      SnackbarService.info('Category "$name" saved offline.');
+      SnackbarService.success('Category "$name" successfully added');
       return true;
     }
   }
