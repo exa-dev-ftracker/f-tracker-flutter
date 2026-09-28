@@ -106,7 +106,6 @@ class SettingsView extends GetView<SettingsController> {
             const SizedBox(height: 10),
             Material(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: const BorderSide(color: AppColors.border),

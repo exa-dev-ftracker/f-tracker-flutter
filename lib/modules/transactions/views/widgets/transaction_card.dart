@@ -79,7 +79,6 @@ class TransactionCard extends StatelessWidget {
         ),
         child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: const BorderSide(color: AppColors.border),

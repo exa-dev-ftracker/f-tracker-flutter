@@ -81,7 +81,6 @@ class CategoriesView extends GetView<CategoryController> {
 
           return Material(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: AppColors.border),
