@@ -79,12 +79,14 @@ class CategoriesView extends GetView<CategoryController> {
           final cat = list[index];
           final color = _parseColor(cat.color);
 
-          return Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
+          return Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              side: const BorderSide(color: AppColors.border),
             ),
+            clipBehavior: Clip.antiAlias,
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               leading: Container(

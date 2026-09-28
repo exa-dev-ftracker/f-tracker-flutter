@@ -68,9 +68,7 @@ class TransactionCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.15),
@@ -79,10 +77,17 @@ class TransactionCard extends StatelessWidget {
             ),
           ],
         ),
-        child: InkWell(
-          onTap: onTap,
+        child: Material(
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(18),
-          child: Padding(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
@@ -196,8 +201,9 @@ class TransactionCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Color _parseColor(String hex) {
     try {

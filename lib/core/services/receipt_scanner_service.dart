@@ -32,74 +32,75 @@ class ReceiptScannerService {
   /// Menampilkan opsi Scan via Kamera atau Galeri, lalu memproses struk dengan ML Kit On-Device (100% Gratis & Offline)
   static Future<ScannedReceiptResult?> showScannerModal() async {
     final source = await Get.bottomSheet<ImageSource>(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
+      Material(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Wrap(
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const Text(
-              'Scan Receipt (Free OCR)',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Processed on-device with Google ML Kit with zero server quota or credit card required.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+              const Text(
+                'Scan Receipt (Free OCR)',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
               ),
-              title: const Text('Take Photo with Camera', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Point camera at receipt or bill', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              onTap: () {
-                AppHaptics.selection();
-                Get.back(result: ImageSource.camera);
-              },
-            ),
-            const Divider(color: AppColors.border, height: 1),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+              const SizedBox(height: 4),
+              const Text(
+                'Processed on-device with Google ML Kit with zero server quota or credit card required.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
                 ),
-                child: const Icon(Icons.photo_library_rounded, color: AppColors.secondary),
+                title: const Text('Take Photo with Camera', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Point camera at receipt or bill', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () {
+                  AppHaptics.selection();
+                  Get.back(result: ImageSource.camera);
+                },
               ),
-              title: const Text('Choose from Photo Gallery', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Use an existing receipt photo', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              onTap: () {
-                AppHaptics.selection();
-                Get.back(result: ImageSource.gallery);
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
+              const Divider(color: AppColors.border, height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: AppColors.secondary),
+                ),
+                title: const Text('Choose from Photo Gallery', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Use an existing receipt photo', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () {
+                  AppHaptics.selection();
+                  Get.back(result: ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );

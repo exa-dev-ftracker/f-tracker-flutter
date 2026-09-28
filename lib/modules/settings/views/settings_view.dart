@@ -104,12 +104,14 @@ class SettingsView extends GetView<SettingsController> {
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
+            Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
+                side: const BorderSide(color: AppColors.border),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   ListTile(
@@ -461,51 +463,52 @@ class SettingsView extends GetView<SettingsController> {
     ];
 
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Text(
-                'Select Timezone',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+      Material(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'Select Timezone',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: timezones.length,
-                itemBuilder: (context, index) {
-                  final tz = timezones[index];
-                  final isSelected = controller.currentTimezone.value == tz['value'];
-                  return ListTile(
-                    title: Text(tz['label']!, style: TextStyle(
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 14,
-                    )),
-                    trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
-                    onTap: () {
-                      Get.back();
-                      controller.updateTimezone(tz['value']!);
-                    },
-                  );
-                },
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: timezones.length,
+                  itemBuilder: (context, index) {
+                    final tz = timezones[index];
+                    final isSelected = controller.currentTimezone.value == tz['value'];
+                    return ListTile(
+                      title: Text(tz['label']!, style: TextStyle(
+                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 14,
+                      )),
+                      trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
+                      onTap: () {
+                        Get.back();
+                        controller.updateTimezone(tz['value']!);
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       isScrollControlled: true,
