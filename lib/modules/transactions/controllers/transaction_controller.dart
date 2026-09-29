@@ -54,12 +54,6 @@ class TransactionController extends GetxController {
         .toList();
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    _loadCachedTransactions();
-    fetchTransactions();
-  }
 
   void _loadCachedTransactions() {
     final cached = storageService.cachedTransactions;
@@ -160,6 +154,38 @@ class TransactionController extends GetxController {
     _recalculateSummary();
   }
 
+  @override
+  void onInit() {
+    super.onInit();
+    _loadCachedTransactions();
+    fetchTransactions();
+    // Background full sync so local cache contains all historical data for offline filtering
+    fetchFullHistory();
+  }
+
+  Future<void> fetchFullHistory() async {
+    if (!syncService.isOnline.value) return;
+    try {
+      final allResult = await repository.getTransactions(view: 'All');
+      final existingCached = storageService.cachedTransactions;
+      final cachedMap = <String, Map<String, dynamic>>{};
+      for (final item in existingCached) {
+        final id = item['id']?.toString() ?? item['_id']?.toString();
+        if (id != null) cachedMap[id] = Map<String, dynamic>.from(item);
+      }
+      for (final r in allResult) {
+        cachedMap[r.id] = r.toJson();
+      }
+      await storageService.saveCachedTransactions(cachedMap.values.toList());
+      LoggerService.i(
+        'Full transaction history synchronized to local cache (${cachedMap.length} items)',
+        tag: 'TransactionController',
+      );
+    } catch (e) {
+      LoggerService.w('Background full history sync deferred: $e', tag: 'TransactionController');
+    }
+  }
+
   Future<void> fetchTransactions() async {
     try {
       isLoading.value = true;
@@ -192,10 +218,18 @@ class TransactionController extends GetxController {
       transactions.assignAll(merged);
       _recalculateSummary();
 
-      // Cache locally for offline availability
-      storageService.saveCachedTransactions(
-        merged.map((e) => e.toJson()).toList(),
-      );
+      // Smart cache merge: update/insert fetched items into the full cached transaction pool
+      // so other months/years previously stored in cache are NOT wiped!
+      final existingCached = storageService.cachedTransactions;
+      final cachedMap = <String, Map<String, dynamic>>{};
+      for (final item in existingCached) {
+        final id = item['id']?.toString() ?? item['_id']?.toString();
+        if (id != null) cachedMap[id] = Map<String, dynamic>.from(item);
+      }
+      for (final item in merged) {
+        cachedMap[item.id] = item.toJson();
+      }
+      await storageService.saveCachedTransactions(cachedMap.values.toList());
     } catch (e) {
       LoggerService.e(
         'Failed to fetch transactions, loading cache: $e',

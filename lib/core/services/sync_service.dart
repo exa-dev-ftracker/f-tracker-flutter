@@ -61,6 +61,7 @@ class SyncService extends GetxService {
 
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _subscription;
+  Timer? _periodicSyncTimer;
   static const _uuid = Uuid();
 
   // Reactive state
@@ -105,7 +106,21 @@ class SyncService extends GetxService {
       });
     }
 
+    // 5. Periodic cron sync (every 5 minutes in background while app is active)
+    _startPeriodicSync();
+
     return this;
+  }
+
+  void _startPeriodicSync() {
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (isOnline.value && !isSyncing.value && storageService.isLoggedIn) {
+        LoggerService.i('Running periodic background sync cron...', tag: 'SyncService');
+        processQueue();
+        _refreshActiveControllers();
+      }
+    });
   }
 
   bool _hasActiveConnection(List<ConnectivityResult> results) {
@@ -482,7 +497,9 @@ class SyncService extends GetxService {
 
   void _refreshActiveControllers() {
     if (Get.isRegistered<TransactionController>()) {
-      Get.find<TransactionController>().fetchTransactions();
+      final txCtrl = Get.find<TransactionController>();
+      txCtrl.fetchTransactions();
+      txCtrl.fetchFullHistory();
     }
     if (Get.isRegistered<DashboardController>()) {
       Get.find<DashboardController>().fetchDashboard();
@@ -522,6 +539,7 @@ class SyncService extends GetxService {
   @override
   void onClose() {
     _subscription?.cancel();
+    _periodicSyncTimer?.cancel();
     super.onClose();
   }
 }
