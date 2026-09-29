@@ -5,6 +5,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/utils/app_error_handler.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../routes/app_routes.dart';
 
@@ -86,31 +87,61 @@ class SettingsController extends GetxController {
   Future<void> logout() async {
     try {
       AppHaptics.heavy();
-      await apiClient.post(ApiEndpoints.logout);
+      if (syncService.isOnline.value) {
+        await apiClient.post(ApiEndpoints.logout);
+      }
     } catch (e) {
       LoggerService.w('Logout API error: $e', tag: 'SettingsController');
+    } finally {
+      // Clear auth tokens and user profile
+      await storageService.clearAuth();
+      // Clear cached data and sync queue so subsequent logins start completely clean
+      await storageService.saveCachedTransactions([]);
+      await storageService.saveCachedCategories([]);
+      await storageService.saveCachedDashboard({});
+      await storageService.saveSyncQueue([]);
+      syncService.pendingCount.value = 0;
+
+      Get.offAllNamed(Routes.login);
+      SnackbarService.success('Successfully logged out');
     }
-    await storageService.clearAuth();
-    Get.offAllNamed(Routes.login);
-    SnackbarService.success('Successfully logged out');
   }
 
-  Future<void> deleteAccount() async {
+  Future<bool> deleteAccount() async {
+    if (!syncService.isOnline.value) {
+      SnackbarService.error(
+        'Cannot delete account while offline. Please connect to the internet to delete your account.',
+        title: 'Offline',
+      );
+      return false;
+    }
+
     try {
       AppHaptics.heavy();
       isLoading.value = true;
-      await apiClient.delete(ApiEndpoints.deleteAccount);
+      final response = await apiClient.delete(ApiEndpoints.deleteAccount);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Clear all local auth, caches, and sync queue
+        await storageService.clearAuth();
+        await storageService.saveCachedTransactions([]);
+        await storageService.saveCachedCategories([]);
+        await storageService.saveCachedDashboard({});
+        await storageService.saveSyncQueue([]);
+        syncService.pendingCount.value = 0;
+
+        Get.offAllNamed(Routes.login);
+        SnackbarService.success('Your account and all associated data have been permanently deleted.');
+        return true;
+      } else {
+        SnackbarService.error('Failed to delete account. Please try again.');
+        return false;
+      }
     } catch (e) {
-      LoggerService.w('Delete account API error: $e', tag: 'SettingsController');
+      LoggerService.e('Delete account API error: $e', tag: 'SettingsController');
+      AppErrorHandler.handle(e, fallback: 'Failed to delete account. Please try again.');
+      return false;
     } finally {
-      // Clear all local auth, caches, and sync queue
-      await storageService.clearAuth();
-      await storageService.saveCachedTransactions([]);
-      await storageService.saveCachedCategories([]);
-      await storageService.saveSyncQueue([]);
       isLoading.value = false;
-      Get.offAllNamed(Routes.login);
-      SnackbarService.success('Your account and all associated data have been permanently deleted.');
     }
   }
 }

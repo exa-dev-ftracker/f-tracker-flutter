@@ -158,25 +158,66 @@ class SettingsView extends GetView<SettingsController> {
               onPressed: () {
                 AppHaptics.heavy();
                 SnackbarService.dismissAll();
-                showDialog(
-                  context: context,
-                  builder: (dialogCtx) => AlertDialog(
-                    backgroundColor: AppColors.surface,
-                    title: const Text('Confirm Log Out', style: TextStyle(color: AppColors.textPrimary)),
-                    content: const Text('Are you sure you want to log out of this account?', style: TextStyle(color: AppColors.textSecondary)),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
-                      FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                        onPressed: () {
-                          Navigator.of(dialogCtx).pop();
-                          controller.logout();
-                        },
-                        child: const Text('Log Out'),
+                final pending = controller.syncService.pendingCount.value;
+
+                if (pending > 0) {
+                  showDialog(
+                    context: context,
+                    builder: (dialogCtx) => AlertDialog(
+                      backgroundColor: AppColors.surface,
+                      title: const Row(
+                        children: [
+                          Icon(Icons.cloud_off_rounded, color: AppColors.warning, size: 22),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Unsynced Changes',
+                              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 17),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
+                      content: Text(
+                        'You have $pending offline item(s) waiting to sync to the server. If you log out now, these unsynced changes will be permanently discarded.\n\nDo you want to log out anyway?',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                          onPressed: () {
+                            Navigator.of(dialogCtx).pop();
+                            controller.logout();
+                          },
+                          child: const Text('Discard & Log Out'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  showDialog(
+                    context: context,
+                    builder: (dialogCtx) => AlertDialog(
+                      backgroundColor: AppColors.surface,
+                      title: const Text('Confirm Log Out', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                      content: const Text('Are you sure you want to log out of this account?', style: TextStyle(color: AppColors.textSecondary)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+                        FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                          onPressed: () {
+                            Navigator.of(dialogCtx).pop();
+                            controller.logout();
+                          },
+                          child: const Text('Log Out'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
               },
             ),
             const SizedBox(height: 24),
@@ -223,6 +264,15 @@ class SettingsView extends GetView<SettingsController> {
                     onPressed: () {
                       AppHaptics.heavy();
                       SnackbarService.dismissAll();
+
+                      if (!controller.syncService.isOnline.value) {
+                        SnackbarService.error(
+                          'Cannot delete account while offline. Please connect to the internet to delete your account.',
+                          title: 'Offline',
+                        );
+                        return;
+                      }
+
                       showDialog(
                         context: context,
                         builder: (dialogCtx) => AlertDialog(
@@ -232,7 +282,7 @@ class SettingsView extends GetView<SettingsController> {
                               Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
                               SizedBox(width: 8),
                               Expanded(
-                                child: Text('Delete Account Permanently?', style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
+                                child: Text('Delete Account Permanently?', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
