@@ -89,6 +89,7 @@ class CategoriesView extends GetView<CategoryController> {
             clipBehavior: Clip.antiAlias,
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              onTap: () => _showEditCategoryDialog(context, cat),
               leading: Container(
                 width: 44,
                 height: 44,
@@ -111,12 +112,23 @@ class CategoriesView extends GetView<CategoryController> {
                 ),
               ),
               subtitle: Text(
-                cat.type == 'income' ? 'Income' : 'Expense',
+                cat.type == 'income' ? 'Income Category' : 'Expense Category',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
-                onPressed: () => _confirmDelete(cat),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 20),
+                    tooltip: 'Edit Category',
+                    onPressed: () => _showEditCategoryDialog(context, cat),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                    tooltip: 'Delete Category',
+                    onPressed: () => _confirmDelete(cat),
+                  ),
+                ],
               ),
             ),
           );
@@ -126,14 +138,71 @@ class CategoriesView extends GetView<CategoryController> {
   }
 
   void _showAddCategoryDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final selectedType = 'expense'.obs;
-    final selectedColor = '#10B981'.obs;
-    final selectedIcon = 'i-heroicons-tag'.obs;
+    _showCategoryFormModal(
+      context: context,
+      title: 'Add New Category',
+      submitLabel: 'Save Category',
+      initialName: '',
+      initialType: 'expense',
+      initialColor: '#10B981',
+      initialIcon: 'i-heroicons-tag',
+      onSubmit: (name, type, color, icon) async {
+        return await controller.addCategory(
+          name: name,
+          type: type,
+          color: color,
+          icon: icon,
+        );
+      },
+    );
+  }
+
+  void _showEditCategoryDialog(BuildContext context, CategoryModel cat) {
+    _showCategoryFormModal(
+      context: context,
+      title: 'Edit Category',
+      submitLabel: 'Update Category',
+      initialName: cat.name,
+      initialType: cat.type,
+      initialColor: cat.color,
+      initialIcon: cat.icon,
+      onSubmit: (name, type, color, icon) async {
+        return await controller.updateCategory(
+          id: cat.id,
+          name: name,
+          type: type,
+          color: color,
+          icon: icon,
+        );
+      },
+    );
+  }
+
+  void _showCategoryFormModal({
+    required BuildContext context,
+    required String title,
+    required String submitLabel,
+    required String initialName,
+    required String initialType,
+    required String initialColor,
+    required String initialIcon,
+    required Future<bool> Function(String name, String type, String color, String icon) onSubmit,
+  }) {
+    final nameCtrl = TextEditingController(text: initialName);
+    final selectedType = initialType.toLowerCase().obs;
+    final selectedColor = initialColor.obs;
+    final selectedIcon = initialIcon.obs;
+    final isSubmitting = false.obs;
+    final nameError = RxnString();
+
+    // Clear error as user types
+    nameCtrl.addListener(() {
+      if (nameError.value != null) nameError.value = null;
+    });
 
     final colorOptions = [
       '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B',
-      '#F43F5E', '#06B6D4', '#EC4899', '#6366F1'
+      '#F43F5E', '#06B6D4', '#EC4899', '#6366F1',
     ];
 
     Get.bottomSheet(
@@ -148,13 +217,22 @@ class CategoriesView extends GetView<CategoryController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Add New Category',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                    onPressed: () => Get.back(),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               // Type Selector
@@ -181,14 +259,15 @@ class CategoriesView extends GetView<CategoryController> {
               )),
               const SizedBox(height: 16),
               // Name Field
-              TextField(
+              Obx(() => TextField(
                 controller: nameCtrl,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Category name (e.g. Coffee, Cinema)',
                   labelText: 'Category Name',
+                  errorText: nameError.value,
                 ),
-              ),
+              )),
               const SizedBox(height: 16),
               // Color Picker Row
               const Text('Category Color', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
@@ -258,20 +337,38 @@ class CategoriesView extends GetView<CategoryController> {
               const SizedBox(height: 24),
 
               // Submit Button
-              ElevatedButton(
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  if (name.isEmpty) return;
-                  final success = await controller.addCategory(
-                    name: name,
-                    type: selectedType.value,
-                    color: selectedColor.value,
-                    icon: selectedIcon.value,
-                  );
-                  if (success) Get.back();
-                },
-                child: const Text('Save Category'),
-              ),
+              Obx(() => SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSubmitting.value ? null : () async {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) {
+                      nameError.value = 'Category name is required';
+                      return;
+                    }
+                    nameError.value = null;
+                    isSubmitting.value = true;
+                    try {
+                      final success = await onSubmit(
+                        name,
+                        selectedType.value,
+                        selectedColor.value,
+                        selectedIcon.value,
+                      );
+                      if (success) Get.back();
+                    } finally {
+                      isSubmitting.value = false;
+                    }
+                  },
+                  child: isSubmitting.value
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(submitLabel),
+                ),
+              )),
             ],
           ),
         ),
@@ -285,10 +382,27 @@ class CategoriesView extends GetView<CategoryController> {
     Get.dialog(
       AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Delete Category', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text('Are you sure you want to delete category "${cat.name}"?', style: const TextStyle(color: AppColors.textSecondary)),
+        title: const Text('Delete Category', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete category "${cat.name}"?',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Existing transactions in this category will be preserved but will no longer show this category.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () {

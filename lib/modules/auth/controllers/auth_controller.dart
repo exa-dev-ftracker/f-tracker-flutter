@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/services/logger_service.dart';
+
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/social_auth_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/utils/app_error_handler.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../routes/app_routes.dart';
 import '../models/user_model.dart';
@@ -13,10 +14,7 @@ class AuthController extends GetxController {
   final AuthRepository repository;
   final StorageService storageService;
 
-  AuthController({
-    required this.repository,
-    required this.storageService,
-  });
+  AuthController({required this.repository, required this.storageService});
 
   final isLoading = false.obs;
   final isAppleAvailable = false.obs;
@@ -29,6 +27,13 @@ class AuthController extends GetxController {
   final regEmailController = TextEditingController();
   final regPasswordController = TextEditingController();
 
+  // Inline field-level error messages
+  final loginEmailError = RxnString();
+  final loginPasswordError = RxnString();
+  final regNameError = RxnString();
+  final regEmailError = RxnString();
+  final regPasswordError = RxnString();
+
   @override
   void onInit() {
     super.onInit();
@@ -37,20 +42,92 @@ class AuthController extends GetxController {
       currentUser.value = UserModel.fromJson(saved);
     }
     _checkAppleAvailability();
+
+    // Clear inline errors as user types
+    loginEmailController.addListener(() => loginEmailError.value = null);
+    loginPasswordController.addListener(() => loginPasswordError.value = null);
+    regNameController.addListener(() => regNameError.value = null);
+    regEmailController.addListener(() => regEmailError.value = null);
+    regPasswordController.addListener(() => regPasswordError.value = null);
   }
 
   Future<void> _checkAppleAvailability() async {
     isAppleAvailable.value = await SocialAuthService.isAppleSignInAvailable();
   }
 
-  Future<void> login() async {
+  // --- Validation Helpers ---
+
+  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  bool _validateLogin() {
     final email = loginEmailController.text.trim();
     final password = loginPasswordController.text;
+    bool valid = true;
 
-    if (email.isEmpty || password.isEmpty) {
-      SnackbarService.warning('Please enter your email and password.');
-      return;
+    if (email.isEmpty) {
+      loginEmailError.value = 'Email is required';
+      valid = false;
+    } else if (!_emailRegex.hasMatch(email)) {
+      loginEmailError.value = 'Please enter a valid email address';
+      valid = false;
+    } else {
+      loginEmailError.value = null;
     }
+
+    if (password.isEmpty) {
+      loginPasswordError.value = 'Password is required';
+      valid = false;
+    } else {
+      loginPasswordError.value = null;
+    }
+
+    return valid;
+  }
+
+  bool _validateRegister() {
+    final name = regNameController.text.trim();
+    final email = regEmailController.text.trim();
+    final password = regPasswordController.text;
+    bool valid = true;
+
+    if (name.isEmpty) {
+      regNameError.value = 'Full name is required';
+      valid = false;
+    } else if (name.length < 2) {
+      regNameError.value = 'Name must be at least 2 characters';
+      valid = false;
+    } else {
+      regNameError.value = null;
+    }
+
+    if (email.isEmpty) {
+      regEmailError.value = 'Email is required';
+      valid = false;
+    } else if (!_emailRegex.hasMatch(email)) {
+      regEmailError.value = 'Please enter a valid email address';
+      valid = false;
+    } else {
+      regEmailError.value = null;
+    }
+
+    if (password.isEmpty) {
+      regPasswordError.value = 'Password is required';
+      valid = false;
+    } else if (password.length < 6) {
+      regPasswordError.value = 'Password must be at least 6 characters';
+      valid = false;
+    } else {
+      regPasswordError.value = null;
+    }
+
+    return valid;
+  }
+
+  Future<void> login() async {
+    if (!_validateLogin()) return;
+
+    final email = loginEmailController.text.trim();
+    final password = loginPasswordController.text;
 
     try {
       AppHaptics.light();
@@ -67,7 +144,11 @@ class AuthController extends GetxController {
         await storageService.saveUser(profile.toJson());
       } catch (_) {
         // Fallback user data
-        final fallback = UserModel(id: 'me', name: email.split('@').first, email: email);
+        final fallback = UserModel(
+          id: 'me',
+          name: email.split('@').first,
+          email: email,
+        );
         currentUser.value = fallback;
         await storageService.saveUser(fallback.toJson());
       }
@@ -76,21 +157,22 @@ class AuthController extends GetxController {
       SnackbarService.success('Welcome back!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      LoggerService.e('Login failed: $e', tag: 'AuthController');
+      AppErrorHandler.handle(
+        e,
+        fallback: 'Login failed. Please check your credentials.',
+        tag: 'AuthController',
+      );
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> register() async {
+    if (!_validateRegister()) return;
+
     final name = regNameController.text.trim();
     final email = regEmailController.text.trim();
     final password = regPasswordController.text;
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      SnackbarService.warning('Please fill in all registration fields.');
-      return;
-    }
 
     try {
       AppHaptics.light();
@@ -108,7 +190,11 @@ class AuthController extends GetxController {
       SnackbarService.success('Registration successful!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      LoggerService.e('Registration failed: $e', tag: 'AuthController');
+      AppErrorHandler.handle(
+        e,
+        fallback: 'Registration failed. Please try again.',
+        tag: 'AuthController',
+      );
     } finally {
       isLoading.value = false;
     }
@@ -152,8 +238,11 @@ class AuthController extends GetxController {
       SnackbarService.success('Logged in with Google successfully!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      LoggerService.e('Google login failed: $e', tag: 'AuthController');
-      SnackbarService.error('Failed to log in with Google: $e');
+      AppErrorHandler.handle(
+        e,
+        fallback: 'Failed to sign in with Google',
+        tag: 'AuthController',
+      );
     } finally {
       isLoading.value = false;
     }
@@ -170,7 +259,10 @@ class AuthController extends GetxController {
         return; // User cancelled
       }
 
-      final fullName = [result.givenName, result.familyName].where((s) => s != null && s.isNotEmpty).join(' ');
+      final fullName = [
+        result.givenName,
+        result.familyName,
+      ].where((s) => s != null && s.isNotEmpty).join(' ');
 
       final auth = await repository.loginWithApple(
         code: result.authorizationCode,
@@ -201,8 +293,11 @@ class AuthController extends GetxController {
       SnackbarService.success('Logged in with Apple successfully!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      LoggerService.e('Apple login failed: $e', tag: 'AuthController');
-      SnackbarService.error('Failed to log in with Apple: $e');
+      AppErrorHandler.handle(
+        e,
+        fallback: 'Failed to sign in with Apple',
+        tag: 'AuthController',
+      );
     } finally {
       isLoading.value = false;
     }

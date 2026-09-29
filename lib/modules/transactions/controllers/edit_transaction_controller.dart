@@ -1,27 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/services/receipt_scanner_service.dart';
 import '../../../core/services/snackbar_service.dart';
-import '../../../core/services/storage_service.dart';
 import '../../../core/utils/app_haptics.dart';
-import '../../../core/utils/currency_formatter.dart';
 import '../../categories/controllers/category_controller.dart';
 import '../../categories/models/category_model.dart';
 import '../../categories/repositories/category_repository.dart';
+import '../models/transaction_model.dart';
 import 'transaction_controller.dart';
 
-class AddTransactionController extends GetxController {
+class EditTransactionController extends GetxController {
+  final TransactionModel originalTransaction;
+
   TransactionController? _txController;
   CategoryController? _catController;
 
-  AddTransactionController({
-    TransactionController? txController,
-    CategoryController? catController,
-  }) {
-    if (txController != null) _txController = txController;
-    if (catController != null) _catController = catController;
-  }
+  EditTransactionController({required this.originalTransaction});
 
   TransactionController get txController =>
       _txController ??= Get.find<TransactionController>();
@@ -54,26 +48,12 @@ class AddTransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
-    final userTz = storage?.user?['timezone']?.toString();
-    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
-
-    final args = Get.arguments;
-    if (args is Map && args['scanned'] is ScannedReceiptResult) {
-      _applyScannedResult(args['scanned'] as ScannedReceiptResult);
-    }
-  }
-
-  void _applyScannedResult(ScannedReceiptResult result) {
-    if (result.estimatedAmount != null && result.estimatedAmount! > 0) {
-      rawAmount.value = result.estimatedAmount!.toInt().toString();
-    }
-    if (result.merchantName != null && result.merchantName!.isNotEmpty) {
-      descController.text = result.merchantName!;
-    }
-    if (result.date != null) {
-      selectedDate.value = result.date!;
-    }
+    // Pre-populate from original transaction
+    selectedType.value = originalTransaction.type;
+    rawAmount.value = originalTransaction.amount.toInt().toString();
+    selectedCategoryId.value = originalTransaction.category?.id;
+    selectedDate.value = originalTransaction.date;
+    descController.text = originalTransaction.description;
   }
 
   double get amountValue => double.tryParse(rawAmount.value) ?? 0.0;
@@ -146,37 +126,6 @@ class AddTransactionController extends GetxController {
     }
   }
 
-  Future<void> scanReceipt() async {
-    AppHaptics.medium();
-    final result = await ReceiptScannerService.showScannerModal();
-    if (result != null) {
-      _applyScannedResult(result);
-
-      if (result.estimatedAmount != null) {
-        AppHaptics.success();
-        SnackbarService.success(
-          'Total detected: ${CurrencyFormatter.format(result.estimatedAmount!)}${result.merchantName != null ? " (${result.merchantName})" : ""}',
-          title: 'Receipt Scanned Successfully',
-        );
-      } else {
-        SnackbarService.info(
-          'Receipt image processed. Please review or adjust transaction details.',
-          title: 'Receipt Scan Result',
-        );
-      }
-    }
-  }
-
-  void resetForm() {
-    rawAmount.value = '0';
-    descController.clear();
-    selectedCategoryId.value = null;
-    selectedType.value = 'Expense';
-    final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
-    final userTz = storage?.user?['timezone']?.toString();
-    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
-  }
-
   Future<void> submit() async {
     if (amountValue <= 0) {
       SnackbarService.warning('Amount must be greater than 0');
@@ -189,7 +138,8 @@ class AddTransactionController extends GetxController {
           ? descController.text.trim()
           : (selectedType.value == 'Income' ? 'Income' : 'Expense');
 
-      final success = await txController.addTransaction(
+      final success = await txController.updateTransaction(
+        id: originalTransaction.id,
         amount: amountValue,
         type: selectedType.value,
         description: desc,
@@ -198,7 +148,6 @@ class AddTransactionController extends GetxController {
       );
 
       if (success) {
-        resetForm();
         if (Get.context != null && Navigator.canPop(Get.context!)) {
           Navigator.pop(Get.context!);
         } else if (Get.key.currentState?.canPop() ?? false) {

@@ -3,6 +3,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/utils/app_error_handler.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../models/category_model.dart';
 import '../repositories/category_repository.dart';
@@ -88,7 +89,7 @@ class CategoryController extends GetxController {
         icon: icon,
       );
       AppHaptics.light();
-      SnackbarService.success('Category "$name" successfully added');
+      SnackbarService.success('Category "$name" added successfully');
       return true;
     }
 
@@ -105,17 +106,95 @@ class CategoryController extends GetxController {
         categories[idx] = newCat;
       }
       storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
-      SnackbarService.success('Category "$name" successfully added');
+      SnackbarService.success('Category "$name" added successfully');
       return true;
     } catch (e) {
-      await syncService.enqueueCreateCategory(
+      if (AppErrorHandler.isOfflineOrNetworkError(e)) {
+        await syncService.enqueueCreateCategory(
+          name: name,
+          type: type,
+          color: color,
+          icon: icon,
+        );
+        SnackbarService.success('Category "$name" added successfully');
+        return true;
+      }
+      // Rollback on server validation error
+      categories.removeWhere((c) => c.id == tempId);
+      storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
+      AppErrorHandler.handle(e, fallback: 'Failed to add category');
+      return false;
+    }
+  }
+
+  Future<bool> updateCategory({
+    required String id,
+    required String name,
+    required String type,
+    String? color,
+    String? icon,
+  }) async {
+    final oldCategories = List<CategoryModel>.from(categories);
+    final idx = categories.indexWhere((c) => c.id == id);
+    if (idx == -1) return false;
+
+    final updatedCat = categories[idx].copyWith(
+      name: name,
+      type: type,
+      color: color ?? categories[idx].color,
+      icon: icon ?? categories[idx].icon,
+    );
+
+    categories[idx] = updatedCat;
+    categories.refresh();
+    storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
+
+    if (!syncService.isOnline.value || id.startsWith('temp_')) {
+      await syncService.enqueueUpdateCategory(
+        id: id,
         name: name,
         type: type,
         color: color,
         icon: icon,
       );
-      SnackbarService.success('Category "$name" successfully added');
+      AppHaptics.light();
+      SnackbarService.success('Category "$name" updated successfully');
       return true;
+    }
+
+    try {
+      AppHaptics.light();
+      final serverCat = await repository.updateCategory(id, {
+        'name': name,
+        'type': type,
+        'color': color,
+        'icon': icon,
+      });
+      final newIdx = categories.indexWhere((c) => c.id == id);
+      if (newIdx != -1) {
+        categories[newIdx] = serverCat;
+        categories.refresh();
+      }
+      storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
+      SnackbarService.success('Category "$name" updated successfully');
+      return true;
+    } catch (e) {
+      if (AppErrorHandler.isOfflineOrNetworkError(e)) {
+        await syncService.enqueueUpdateCategory(
+          id: id,
+          name: name,
+          type: type,
+          color: color,
+          icon: icon,
+        );
+        SnackbarService.success('Category "$name" updated successfully');
+        return true;
+      }
+      // Rollback on server validation error
+      categories.assignAll(oldCategories);
+      storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
+      AppErrorHandler.handle(e, fallback: 'Failed to update category');
+      return false;
     }
   }
 
@@ -126,12 +205,13 @@ class CategoryController extends GetxController {
       if (success) {
         categories.removeWhere((c) => c.id == id);
         storageService.saveCachedCategories(categories.map((e) => e.toJson()).toList());
-        SnackbarService.success('Category successfully deleted');
+        SnackbarService.success('Category deleted successfully');
         return true;
       }
+      SnackbarService.error('Failed to delete category');
       return false;
     } catch (e) {
-      SnackbarService.error('Failed to delete category');
+      AppErrorHandler.handle(e, fallback: 'Failed to delete category');
       return false;
     }
   }

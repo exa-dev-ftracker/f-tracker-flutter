@@ -354,19 +354,42 @@ class TransactionCard extends StatelessWidget {
             ),
             if (onDelete != null) ...[
               const SizedBox(height: 20),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.error.withValues(alpha: 0.15),
-                  foregroundColor: AppColors.error,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                label: const Text('Delete Transaction', style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  Get.back();
-                  onDelete!();
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      label: const Text('Edit', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Get.back();
+                        Get.toNamed('/transactions/edit', arguments: transaction);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error.withValues(alpha: 0.15),
+                        foregroundColor: AppColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                      label: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Get.back();
+                        onDelete!();
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

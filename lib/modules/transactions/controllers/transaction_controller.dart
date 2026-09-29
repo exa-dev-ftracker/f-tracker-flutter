@@ -5,6 +5,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
+import '../../../core/utils/app_error_handler.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../analytics/controllers/analytics_controller.dart';
 import '../../categories/models/category_model.dart';
@@ -29,6 +30,10 @@ class TransactionController extends GetxController {
   final selectedType = ''.obs; // '', 'Income', 'Expense'
   final searchQuery = ''.obs;
   final searchController = TextEditingController();
+
+  // Custom month/year filter
+  final filterYear = Rxn<int>();
+  final filterMonth = Rxn<int>();
 
   // Summary Metrics
   final incomeTotal = 0.0.obs;
@@ -69,6 +74,8 @@ class TransactionController extends GetxController {
         view: selectedView.value,
         type: selectedType.value.isNotEmpty ? selectedType.value : null,
         search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        year: filterYear.value,
+        month: filterMonth.value,
       );
 
       // Preserve any pending local items awaiting sync
@@ -126,6 +133,35 @@ class TransactionController extends GetxController {
   void setViewPeriod(String period) {
     AppHaptics.selection();
     selectedView.value = period;
+    // Clear custom month/year filter when switching to a preset period
+    if (period != 'Custom') {
+      filterYear.value = null;
+      filterMonth.value = null;
+    }
+    fetchTransactions();
+  }
+
+  void setCustomMonthYear(int year, int month) {
+    AppHaptics.selection();
+    selectedView.value = 'Custom';
+    filterYear.value = year;
+    filterMonth.value = month;
+    fetchTransactions();
+  }
+
+  void setCustomYear(int year) {
+    AppHaptics.selection();
+    selectedView.value = 'Custom';
+    filterYear.value = year;
+    filterMonth.value = null;
+    fetchTransactions();
+  }
+
+  void clearCustomFilter() {
+    AppHaptics.light();
+    filterYear.value = null;
+    filterMonth.value = null;
+    selectedView.value = 'Month';
     fetchTransactions();
   }
 
@@ -248,6 +284,110 @@ class TransactionController extends GetxController {
     }
   }
 
+  Future<bool> updateTransaction({
+    required String id,
+    required double amount,
+    required String type,
+    required String description,
+    String? categoryId,
+    DateTime? date,
+  }) async {
+    final oldTransactions = List<TransactionModel>.from(transactions);
+    final idx = transactions.indexWhere((t) => t.id == id);
+    if (idx == -1) return false;
+
+    // Locate category for local display
+    CategoryModel? selectedCat;
+    if (categoryId != null && categoryId.isNotEmpty) {
+      final cachedCats = storageService.cachedCategories;
+      for (final c in cachedCats) {
+        if (c is Map && (c['_id'] == categoryId || c['id'] == categoryId)) {
+          selectedCat = CategoryModel.fromJson(Map<String, dynamic>.from(c));
+          break;
+        }
+      }
+    }
+
+    final txDate = date ?? transactions[idx].date;
+    final calendarDate = DateTime(txDate.year, txDate.month, txDate.day);
+
+    // Optimistic update
+    transactions[idx] = transactions[idx].copyWith(
+      amount: amount,
+      type: type,
+      description: description,
+      category: selectedCat,
+      date: calendarDate,
+    );
+    transactions.refresh();
+    _recalculateSummary();
+    storageService.saveCachedTransactions(
+      transactions.map((e) => e.toJson()).toList(),
+    );
+
+    // If offline or temp item, enqueue
+    if (!syncService.isOnline.value || id.startsWith('temp_')) {
+      await syncService.enqueueUpdateTransaction(
+        id: id,
+        amount: amount,
+        type: type,
+        description: description,
+        categoryId: categoryId,
+        date: calendarDate,
+      );
+      AppHaptics.success();
+      SnackbarService.success('Transaction updated successfully!');
+      notifyGlobalStateChange();
+      return true;
+    }
+
+    try {
+      AppHaptics.success();
+      final dateIso = DateTime.utc(calendarDate.year, calendarDate.month, calendarDate.day).toIso8601String();
+      final updatedTx = await repository.updateTransaction(id, {
+        'amount': amount,
+        'type': type,
+        'description': description,
+        if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+        'date': dateIso,
+      });
+
+      final newIdx = transactions.indexWhere((t) => t.id == id);
+      if (newIdx != -1) {
+        transactions[newIdx] = updatedTx.copyWith(isPendingSync: false);
+        transactions.refresh();
+      }
+      storageService.saveCachedTransactions(
+        transactions.map((e) => e.toJson()).toList(),
+      );
+      SnackbarService.success('Transaction updated successfully!');
+      notifyGlobalStateChange();
+      return true;
+    } catch (e) {
+      if (AppErrorHandler.isOfflineOrNetworkError(e)) {
+        await syncService.enqueueUpdateTransaction(
+          id: id,
+          amount: amount,
+          type: type,
+          description: description,
+          categoryId: categoryId,
+          date: calendarDate,
+        );
+        SnackbarService.success('Transaction updated successfully!');
+        notifyGlobalStateChange();
+        return true;
+      }
+      // Rollback on server validation error
+      transactions.assignAll(oldTransactions);
+      _recalculateSummary();
+      storageService.saveCachedTransactions(
+        transactions.map((e) => e.toJson()).toList(),
+      );
+      AppErrorHandler.handle(e, fallback: 'Failed to update transaction');
+      return false;
+    }
+  }
+
   Future<bool> deleteTransaction(TransactionModel tx) async {
     AppHaptics.heavy();
 
@@ -291,7 +431,10 @@ class TransactionController extends GetxController {
         // Rollback
         transactions.assignAll(previousList);
         _recalculateSummary();
-        SnackbarService.error('Failed to delete transaction on server');
+        AppErrorHandler.handle(
+          Exception('Server rejected delete'),
+          fallback: 'Failed to delete transaction',
+        );
         return false;
       }
     } catch (e) {

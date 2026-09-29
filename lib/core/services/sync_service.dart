@@ -200,6 +200,91 @@ class SyncService extends GetxService {
     LoggerService.i('Enqueued CREATE_CATEGORY ($name). Pending: ${queue.length}', tag: 'SyncService');
   }
 
+  Future<void> enqueueUpdateTransaction({
+    required String id,
+    required double amount,
+    required String type,
+    required String description,
+    String? categoryId,
+    DateTime? date,
+  }) async {
+    final payloadData = {
+      'amount': amount,
+      'type': type,
+      'description': description,
+      if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+      if (date != null) 'date': date.toIso8601String(),
+    };
+
+    final queue = List<Map<String, dynamic>>.from(
+      storageService.syncQueue.map((e) => Map<String, dynamic>.from(e)),
+    );
+
+    // If still pending create, update that task's payload directly
+    if (id.startsWith('temp_')) {
+      final createIdx = queue.indexWhere((item) =>
+          item['action'] == 'CREATE_TRANSACTION' &&
+          item['payload'] != null &&
+          item['payload']['client_id'] == id);
+      if (createIdx != -1) {
+        final currentPayload = Map<String, dynamic>.from(queue[createIdx]['payload'] ?? {});
+        currentPayload.addAll(payloadData);
+        queue[createIdx]['payload'] = currentPayload;
+        await storageService.saveSyncQueue(queue);
+        return;
+      }
+    }
+
+    final task = SyncTask(
+      id: _uuid.v4(),
+      action: 'UPDATE_TRANSACTION',
+      payload: {
+        'id': id,
+        'data': payloadData,
+      },
+      createdAt: DateTime.now(),
+    );
+
+    queue.add(task.toJson());
+    await storageService.saveSyncQueue(queue);
+    pendingCount.value = queue.length;
+    LoggerService.i('Enqueued UPDATE_TRANSACTION ($id). Pending: ${queue.length}', tag: 'SyncService');
+  }
+
+  Future<void> enqueueUpdateCategory({
+    required String id,
+    required String name,
+    required String type,
+    String? color,
+    String? icon,
+  }) async {
+    final payloadData = {
+      'name': name,
+      'type': type,
+      'color': color,
+      'icon': icon,
+    };
+
+    final queue = List<Map<String, dynamic>>.from(
+      storageService.syncQueue.map((e) => Map<String, dynamic>.from(e)),
+    );
+
+    final task = SyncTask(
+      id: _uuid.v4(),
+      action: 'UPDATE_CATEGORY',
+      payload: {
+        'id': id,
+        'data': payloadData,
+      },
+      createdAt: DateTime.now(),
+    );
+
+    queue.add(task.toJson());
+    await storageService.saveSyncQueue(queue);
+    pendingCount.value = queue.length;
+    LoggerService.i('Enqueued UPDATE_CATEGORY ($id). Pending: ${queue.length}', tag: 'SyncService');
+  }
+
   Future<void> removePendingCreate(String tempId) async {
     final queue = List<Map<String, dynamic>>.from(
       storageService.syncQueue.map((e) => Map<String, dynamic>.from(e)),
@@ -244,11 +329,17 @@ class SyncService extends GetxService {
           if (task.action == 'CREATE_TRANSACTION') {
             await _syncCreateTransaction(task);
             successfulTaskIds.add(task.id);
+          } else if (task.action == 'UPDATE_TRANSACTION') {
+            await _syncUpdateTransaction(task);
+            successfulTaskIds.add(task.id);
           } else if (task.action == 'DELETE_TRANSACTION') {
             await _syncDeleteTransaction(task);
             successfulTaskIds.add(task.id);
           } else if (task.action == 'CREATE_CATEGORY') {
             await _syncCreateCategory(task);
+            successfulTaskIds.add(task.id);
+          } else if (task.action == 'UPDATE_CATEGORY') {
+            await _syncUpdateCategory(task);
             successfulTaskIds.add(task.id);
           }
         } catch (e) {
@@ -350,6 +441,41 @@ class SyncService extends GetxService {
     await apiClient.post(
       ApiEndpoints.categories,
       data: task.payload,
+      options: Options(extra: {'silent': true}),
+    );
+  }
+
+  Future<void> _syncUpdateTransaction(SyncTask task) async {
+    final txId = task.payload['id']?.toString() ?? '';
+    if (txId.isEmpty || txId.startsWith('temp_')) return;
+
+    final response = await apiClient.put(
+      ApiEndpoints.transactionDetail(txId),
+      data: task.payload['data'],
+      options: Options(extra: {'silent': true}),
+    );
+
+    final data = response.data;
+    final item = data is Map && data['data'] != null ? data['data'] : data;
+    final serverTx = TransactionModel.fromJson(Map<String, dynamic>.from(item));
+
+    final cached = List<Map<String, dynamic>>.from(
+      storageService.cachedTransactions.map((e) => Map<String, dynamic>.from(e)),
+    );
+    final idx = cached.indexWhere((c) => c['id'] == txId || c['_id'] == txId);
+    if (idx != -1) {
+      cached[idx] = serverTx.copyWith(isPendingSync: false).toJson();
+      await storageService.saveCachedTransactions(cached);
+    }
+  }
+
+  Future<void> _syncUpdateCategory(SyncTask task) async {
+    final catId = task.payload['id']?.toString() ?? '';
+    if (catId.isEmpty || catId.startsWith('temp_')) return;
+
+    await apiClient.put(
+      ApiEndpoints.categoryDetail(catId),
+      data: task.payload['data'],
       options: Options(extra: {'silent': true}),
     );
   }

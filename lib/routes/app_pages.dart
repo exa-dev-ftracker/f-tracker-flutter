@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+
 import '../modules/analytics/bindings/analytics_binding.dart';
 import '../modules/analytics/views/analytics_view.dart';
 import '../modules/auth/bindings/auth_binding.dart';
@@ -14,6 +15,7 @@ import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 import '../modules/transactions/bindings/transaction_binding.dart';
 import '../modules/transactions/views/add_transaction_view.dart';
+import '../modules/transactions/views/edit_transaction_view.dart';
 import '../modules/transactions/views/transactions_view.dart';
 import 'app_routes.dart';
 import 'middlewares/auth_middleware.dart';
@@ -61,6 +63,13 @@ class AppPages {
       binding: TransactionBinding(),
       middlewares: [AuthMiddleware()],
       transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.editTransaction,
+      page: () => const EditTransactionView(),
+      binding: TransactionBinding(),
+      middlewares: [AuthMiddleware()],
+      transition: Transition.rightToLeftWithFade,
     ),
     GetPage(
       name: Routes.categories,

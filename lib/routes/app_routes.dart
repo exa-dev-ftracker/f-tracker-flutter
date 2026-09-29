@@ -7,6 +7,7 @@ abstract class Routes {
   static const dashboard = '/dashboard';
   static const transactions = '/transactions';
   static const addTransaction = '/transactions/add';
+  static const editTransaction = '/transactions/edit';
   static const categories = '/categories';
   static const analytics = '/analytics';
   static const settings = '/settings';

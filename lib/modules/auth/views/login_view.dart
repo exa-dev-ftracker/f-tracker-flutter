@@ -70,16 +70,17 @@ class LoginView extends GetView<AuthController> {
                 const SizedBox(height: 36),
 
                 // Email Field
-                TextField(
+                Obx(() => TextField(
                   controller: controller.loginEmailController,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Email',
                     hintText: 'name@domain.com',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    errorText: controller.loginEmailError.value,
                   ),
-                ),
+                )),
                 const SizedBox(height: 16),
 
                 // Password Field
@@ -91,6 +92,7 @@ class LoginView extends GetView<AuthController> {
                     labelText: 'Password',
                     hintText: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    errorText: controller.loginPasswordError.value,
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscurePassword.value ? Icons.visibility_outlined : Icons.visibility_off_outlined,

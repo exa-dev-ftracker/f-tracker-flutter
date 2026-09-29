@@ -5,7 +5,31 @@ import '../theme/app_colors.dart';
 class SnackbarService {
   SnackbarService._();
 
+  static String? _lastMessage;
+  static DateTime? _lastMessageTime;
+
+  static bool _isDuplicate(String message) {
+    final now = DateTime.now();
+    if (_lastMessage == message &&
+        _lastMessageTime != null &&
+        now.difference(_lastMessageTime!).inMilliseconds < 1500) {
+      return true;
+    }
+    _lastMessage = message;
+    _lastMessageTime = now;
+    return false;
+  }
+
+  static void _dismissExisting() {
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
+  }
+
   static void success(String message, {String title = 'Success'}) {
+    if (_isDuplicate(message)) return;
+    _dismissExisting();
+
     Get.snackbar(
       title,
       message,
@@ -22,6 +46,9 @@ class SnackbarService {
   }
 
   static void error(String message, {String title = 'Failed'}) {
+    if (_isDuplicate(message)) return;
+    _dismissExisting();
+
     Get.snackbar(
       title,
       message,
@@ -38,6 +65,9 @@ class SnackbarService {
   }
 
   static void warning(String message, {String title = 'Warning'}) {
+    if (_isDuplicate(message)) return;
+    _dismissExisting();
+
     Get.snackbar(
       title,
       message,
@@ -54,6 +84,9 @@ class SnackbarService {
   }
 
   static void info(String message, {String title = 'Information'}) {
+    if (_isDuplicate(message)) return;
+    _dismissExisting();
+
     Get.snackbar(
       title,
       message,

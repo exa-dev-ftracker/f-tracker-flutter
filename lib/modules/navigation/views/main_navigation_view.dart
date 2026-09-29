@@ -17,29 +17,36 @@ class MainNavigationView extends GetView<NavigationController> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final pages = [
-      const DashboardView(),
-      const TransactionsView(),
-      const AnalyticsView(),
-      const SettingsView(),
-    ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // 1. Persistent Tab Views
-          Obx(() => IndexedStack(
-            index: controller.currentIndex.value,
-            children: pages,
-          )),
+          // 1. Swipeable Page Views (replaces IndexedStack for iOS gesture nav)
+          PageView(
+            controller: controller.pageController,
+            onPageChanged: controller.onPageSwiped,
+            physics: const BouncingScrollPhysics(),
+            children: const [
+              KeepAlivePage(child: DashboardView()),
+              KeepAlivePage(child: TransactionsView()),
+              KeepAlivePage(child: AnalyticsView()),
+              KeepAlivePage(child: SettingsView()),
+            ],
+          ),
 
           // 2. Floating Glassmorphism Bottom Navigation Bar
           Positioned(
             left: 16,
             right: 16,
             bottom: bottomInset > 0 ? bottomInset + 4 : 20,
-            child: _buildFloatingBottomNav(context),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _buildFloatingBottomNav(context),
+              ),
+            ),
           ),
         ],
       ),
@@ -151,7 +158,7 @@ class MainNavigationView extends GetView<NavigationController> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -167,13 +174,17 @@ class MainNavigationView extends GetView<NavigationController> {
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
-                  fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  letterSpacing: -0.2,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
@@ -372,5 +383,26 @@ class MainNavigationView extends GetView<NavigationController> {
         ),
       ),
     );
+  }
+}
+
+/// Wrapper to keep each page alive in PageView so state is preserved when swiping
+class KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const KeepAlivePage({super.key, required this.child});
+
+  @override
+  State<KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

@@ -12,12 +12,16 @@ class TransactionRepository {
     String? type,
     String? category,
     String? search,
+    int? year,
+    int? month,
   }) async {
     final query = <String, dynamic>{};
     if (view != null && view.isNotEmpty) query['view'] = view;
     if (type != null && type.isNotEmpty) query['type'] = type;
     if (category != null && category.isNotEmpty) query['category'] = category;
     if (search != null && search.isNotEmpty) query['search'] = search;
+    if (year != null) query['year'] = year.toString();
+    if (month != null) query['month'] = month.toString();
 
     final response = await apiClient.get(
       ApiEndpoints.transactions,
