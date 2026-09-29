@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../../core/services/snackbar_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/category_icon_helper.dart';
@@ -32,8 +33,10 @@ class TransactionCard extends StatelessWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (direction) async {
         AppHaptics.heavy();
-        final confirm = await Get.dialog<bool>(
-          AlertDialog(
+        SnackbarService.dismissAll();
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
             backgroundColor: AppColors.surface,
             title: const Text('Delete Transaction', style: TextStyle(color: AppColors.textPrimary)),
             content: Text(
@@ -41,10 +44,10 @@ class TransactionCard extends StatelessWidget {
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             actions: [
-              TextButton(onPressed: () => Get.back(result: false), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+              TextButton(onPressed: () => Navigator.of(dialogCtx).pop(false), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                onPressed: () => Get.back(result: true),
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
                 child: const Text('Delete'),
               ),
             ],

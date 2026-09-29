@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -156,17 +157,19 @@ class SettingsView extends GetView<SettingsController> {
               label: const Text('Log Out'),
               onPressed: () {
                 AppHaptics.heavy();
-                Get.dialog(
-                  AlertDialog(
+                SnackbarService.dismissAll();
+                showDialog(
+                  context: context,
+                  builder: (dialogCtx) => AlertDialog(
                     backgroundColor: AppColors.surface,
                     title: const Text('Confirm Log Out', style: TextStyle(color: AppColors.textPrimary)),
                     content: const Text('Are you sure you want to log out of this account?', style: TextStyle(color: AppColors.textSecondary)),
                     actions: [
-                      TextButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+                      TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
                       FilledButton(
                         style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                         onPressed: () {
-                          Get.back();
+                          Navigator.of(dialogCtx).pop();
                           controller.logout();
                         },
                         child: const Text('Log Out'),
@@ -219,8 +222,10 @@ class SettingsView extends GetView<SettingsController> {
                     label: const Text('Permanently Delete Account', style: TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () {
                       AppHaptics.heavy();
-                      Get.dialog(
-                        AlertDialog(
+                      SnackbarService.dismissAll();
+                      showDialog(
+                        context: context,
+                        builder: (dialogCtx) => AlertDialog(
                           backgroundColor: AppColors.surface,
                           title: const Row(
                             children: [
@@ -237,13 +242,13 @@ class SettingsView extends GetView<SettingsController> {
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Get.back(),
+                              onPressed: () => Navigator.of(dialogCtx).pop(),
                               child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                               onPressed: () {
-                                Get.back();
+                                Navigator.of(dialogCtx).pop();
                                 controller.deleteAccount();
                               },
                               child: const Text('Delete My Account'),

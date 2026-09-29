@@ -26,6 +26,13 @@ class SnackbarService {
     }
   }
 
+  static void dismissAll() {
+    if (Get.isSnackbarOpen) {
+      Get.closeAllSnackbars();
+    }
+  }
+
+
   static void success(String message, {String title = 'Success'}) {
     if (_isDuplicate(message)) return;
     _dismissExisting();

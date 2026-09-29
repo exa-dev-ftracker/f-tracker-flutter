@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/category_icon_helper.dart';
@@ -126,7 +127,7 @@ class CategoriesView extends GetView<CategoryController> {
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
                     tooltip: 'Delete Category',
-                    onPressed: () => _confirmDelete(cat),
+                    onPressed: () => _confirmDelete(context, cat),
                   ),
                 ],
               ),
@@ -205,9 +206,17 @@ class CategoriesView extends GetView<CategoryController> {
       '#F43F5E', '#06B6D4', '#EC4899', '#6366F1',
     ];
 
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
         decoration: const BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -230,7 +239,7 @@ class CategoriesView extends GetView<CategoryController> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
-                    onPressed: () => Get.back(),
+                    onPressed: () => Navigator.of(sheetContext).pop(),
                   ),
                 ],
               ),
@@ -355,7 +364,9 @@ class CategoriesView extends GetView<CategoryController> {
                         selectedColor.value,
                         selectedIcon.value,
                       );
-                      if (success) Get.back();
+                      if (success && sheetContext.mounted) {
+                        Navigator.of(sheetContext).pop();
+                      }
                     } finally {
                       isSubmitting.value = false;
                     }
@@ -373,14 +384,15 @@ class CategoriesView extends GetView<CategoryController> {
           ),
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
-  void _confirmDelete(CategoryModel cat) {
+  void _confirmDelete(BuildContext context, CategoryModel cat) {
     AppHaptics.heavy();
-    Get.dialog(
-      AlertDialog(
+    SnackbarService.dismissAll();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Delete Category', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
         content: Column(
@@ -400,13 +412,13 @@ class CategoriesView extends GetView<CategoryController> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () {
-              Get.back();
+              Navigator.of(dialogCtx).pop();
               controller.deleteCategory(cat.id);
             },
             child: const Text('Delete'),
