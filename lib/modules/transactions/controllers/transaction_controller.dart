@@ -63,49 +63,101 @@ class TransactionController extends GetxController {
 
   void _loadCachedTransactions() {
     final cached = storageService.cachedTransactions;
+    var list = <TransactionModel>[];
     if (cached.isNotEmpty) {
       try {
-        var list = cached
+        list = cached
             .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
-
-        // Local type filter
-        if (selectedType.value.isNotEmpty) {
-          list = list.where((t) => t.type.toLowerCase() == selectedType.value.toLowerCase()).toList();
-        }
-
-        // Local category filter
-        if (selectedCategory.value.isNotEmpty && selectedCategory.value != 'all') {
-          list = list.where((t) => t.category?.id == selectedCategory.value).toList();
-        }
-
-        // Local search filter
-        if (searchQuery.value.isNotEmpty) {
-          final q = searchQuery.value.toLowerCase();
-          list = list.where((t) => t.description.toLowerCase().contains(q)).toList();
-        }
-
-        // Local sort
-        switch (selectedSort.value) {
-          case 'oldest':
-            list.sort((a, b) => a.date.compareTo(b.date));
-            break;
-          case 'highest':
-            list.sort((a, b) => b.amount.compareTo(a.amount));
-            break;
-          case 'lowest':
-            list.sort((a, b) => a.amount.compareTo(b.amount));
-            break;
-          case 'newest':
-          default:
-            list.sort((a, b) => b.date.compareTo(a.date));
-            break;
-        }
-
-        transactions.assignAll(list);
-        _recalculateSummary();
       } catch (_) {}
     }
+
+    // Preserve any in-memory pending sync items
+    final inMemoryPending = transactions.where((t) => t.isPendingSync).toList();
+    for (final p in inMemoryPending) {
+      if (!list.any((item) => item.id == p.id)) {
+        list.insert(0, p);
+      }
+    }
+
+    if (list.isEmpty) {
+      transactions.clear();
+      _recalculateSummary();
+      return;
+    }
+
+    // 1. Local period / date filter
+    final now = DateTime.now();
+    if (selectedView.value == 'Day') {
+      final start = DateTime(now.year, now.month, now.day);
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+    } else if (selectedView.value == 'Week') {
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final start = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final end = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59, 999);
+      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+    } else if (selectedView.value == 'Month') {
+      final start = DateTime(now.year, now.month, 1);
+      final lastDay = DateTime(now.year, now.month + 1, 0).day;
+      final end = DateTime(now.year, now.month, lastDay, 23, 59, 59, 999);
+      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+    } else if (selectedView.value == 'Year') {
+      final start = DateTime(now.year, 1, 1);
+      final end = DateTime(now.year, 12, 31, 23, 59, 59, 999);
+      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+    } else if (selectedView.value == 'Custom') {
+      if (filterYear.value != null && filterMonth.value != null) {
+        final y = filterYear.value!;
+        final m = filterMonth.value!;
+        final start = DateTime(y, m, 1);
+        final lastDay = DateTime(y, m + 1, 0).day;
+        final end = DateTime(y, m, lastDay, 23, 59, 59, 999);
+        list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+      } else if (filterYear.value != null) {
+        final y = filterYear.value!;
+        final start = DateTime(y, 1, 1);
+        final end = DateTime(y, 12, 31, 23, 59, 59, 999);
+        list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
+      }
+    }
+
+    // 2. Local type filter
+    if (selectedType.value.isNotEmpty) {
+      list = list.where((t) => t.type.toLowerCase() == selectedType.value.toLowerCase()).toList();
+    }
+
+    // 3. Local category filter
+    if (selectedCategory.value.isNotEmpty && selectedCategory.value != 'all') {
+      list = list.where((t) => t.category?.id == selectedCategory.value).toList();
+    }
+
+    // 4. Local search filter
+    if (searchQuery.value.isNotEmpty) {
+      final q = searchQuery.value.toLowerCase();
+      list = list.where((t) => t.description.toLowerCase().contains(q)).toList();
+    }
+
+    // 5. Local sort
+    switch (selectedSort.value) {
+      case 'oldest':
+        list.sort((a, b) => a.date.compareTo(b.date));
+        break;
+      case 'highest':
+        list.sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case 'lowest':
+        list.sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+      case 'newest':
+      default:
+        list.sort((a, b) => b.date.compareTo(a.date));
+        break;
+    }
+
+    transactions.assignAll(list);
+    _recalculateSummary();
   }
 
   Future<void> fetchTransactions() async {
