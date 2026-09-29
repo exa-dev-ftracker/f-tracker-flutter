@@ -393,7 +393,7 @@ class CategoriesView extends GetView<CategoryController> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Existing transactions in this category will be preserved but will no longer show this category.',
+              'If this category is currently used by any transactions, deletion will be blocked until those transactions are reassigned or deleted.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],

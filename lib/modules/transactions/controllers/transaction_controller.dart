@@ -35,12 +35,24 @@ class TransactionController extends GetxController {
   final filterYear = Rxn<int>();
   final filterMonth = Rxn<int>();
 
+  // Category & Sort filters
+  final selectedCategory = ''.obs; // '' or 'all' = all, or categoryId
+  final selectedCategoryName = ''.obs;
+  final selectedSort = 'newest'.obs; // 'newest', 'oldest', 'highest', 'lowest'
+
   // Summary Metrics
   final incomeTotal = 0.0.obs;
   final expenseTotal = 0.0.obs;
   final balance = 0.0.obs;
 
   SyncService get syncService => Get.find<SyncService>();
+
+  List<CategoryModel> get availableCategories {
+    final cached = storageService.cachedCategories;
+    return cached
+        .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 
   @override
   void onInit() {
@@ -53,9 +65,43 @@ class TransactionController extends GetxController {
     final cached = storageService.cachedTransactions;
     if (cached.isNotEmpty) {
       try {
-        final list = cached
+        var list = cached
             .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+
+        // Local type filter
+        if (selectedType.value.isNotEmpty) {
+          list = list.where((t) => t.type.toLowerCase() == selectedType.value.toLowerCase()).toList();
+        }
+
+        // Local category filter
+        if (selectedCategory.value.isNotEmpty && selectedCategory.value != 'all') {
+          list = list.where((t) => t.category?.id == selectedCategory.value).toList();
+        }
+
+        // Local search filter
+        if (searchQuery.value.isNotEmpty) {
+          final q = searchQuery.value.toLowerCase();
+          list = list.where((t) => t.description.toLowerCase().contains(q)).toList();
+        }
+
+        // Local sort
+        switch (selectedSort.value) {
+          case 'oldest':
+            list.sort((a, b) => a.date.compareTo(b.date));
+            break;
+          case 'highest':
+            list.sort((a, b) => b.amount.compareTo(a.amount));
+            break;
+          case 'lowest':
+            list.sort((a, b) => a.amount.compareTo(b.amount));
+            break;
+          case 'newest':
+          default:
+            list.sort((a, b) => b.date.compareTo(a.date));
+            break;
+        }
+
         transactions.assignAll(list);
         _recalculateSummary();
       } catch (_) {}
@@ -73,7 +119,11 @@ class TransactionController extends GetxController {
       final result = await repository.getTransactions(
         view: selectedView.value,
         type: selectedType.value.isNotEmpty ? selectedType.value : null,
+        category: selectedCategory.value.isNotEmpty && selectedCategory.value != 'all'
+            ? selectedCategory.value
+            : null,
         search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        sort: selectedSort.value,
         year: filterYear.value,
         month: filterMonth.value,
       );
@@ -162,6 +212,26 @@ class TransactionController extends GetxController {
     filterYear.value = null;
     filterMonth.value = null;
     selectedView.value = 'Month';
+    fetchTransactions();
+  }
+
+  void setCategoryFilter(String categoryId, [String categoryName = '']) {
+    AppHaptics.selection();
+    selectedCategory.value = categoryId;
+    selectedCategoryName.value = categoryName;
+    fetchTransactions();
+  }
+
+  void clearCategoryFilter() {
+    AppHaptics.light();
+    selectedCategory.value = '';
+    selectedCategoryName.value = '';
+    fetchTransactions();
+  }
+
+  void setSort(String sort) {
+    AppHaptics.selection();
+    selectedSort.value = sort;
     fetchTransactions();
   }
 
