@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/services/receipt_scanner_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../routes/app_routes.dart';
@@ -218,7 +217,7 @@ class MainNavigationView extends GetView<NavigationController> {
     return GestureDetector(
       onTap: () {
         AppHaptics.heavy();
-        _showQuickActionSheet(context);
+        Get.toNamed(Routes.addTransaction);
       },
       child: Container(
         width: 52,
@@ -245,141 +244,6 @@ class MainNavigationView extends GetView<NavigationController> {
             color: Colors.white,
             size: 30,
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showQuickActionSheet(BuildContext context) {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.borderLight,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const Text(
-              'Quick Action',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Choose how you would like to track your finances',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-
-            // Option 1: Manual Record
-            _buildActionOption(
-              icon: Icons.edit_note_rounded,
-              color: AppColors.primary,
-              title: 'Record Transaction',
-              subtitle: 'Enter amount, category, and notes with quick numpad',
-              onTap: () {
-                Get.back();
-                Get.toNamed(Routes.addTransaction);
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Option 2: Scan Receipt
-            _buildActionOption(
-              icon: Icons.document_scanner_rounded,
-              color: AppColors.secondary,
-              title: 'Scan Receipt (AI OCR)',
-              subtitle: 'Extract total, store, and date instantly using camera/gallery',
-              onTap: () async {
-                Get.back();
-                final result = await ReceiptScannerService.showScannerModal();
-                if (result != null) {
-                  Get.toNamed(Routes.addTransaction, arguments: {'scanned': result});
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  Widget _buildActionOption({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        AppHaptics.selection();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: color.withValues(alpha: 0.3)),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-          ],
         ),
       ),
     );

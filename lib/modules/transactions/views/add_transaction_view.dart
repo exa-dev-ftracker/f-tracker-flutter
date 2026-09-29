@@ -15,15 +15,6 @@ class AddTransactionView extends GetView<AddTransactionController> {
       appBar: AppBar(
         title: const Text('Record Transaction'),
         backgroundColor: AppColors.surface,
-        actions: [
-          // Mobile Exclusive: Camera Receipt Scanner (ML Kit on-device)
-          IconButton(
-            icon: const Icon(Icons.document_scanner_rounded, color: AppColors.primaryLight),
-            tooltip: 'Scan Receipt with Camera (AI OCR)',
-            onPressed: controller.scanReceipt,
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         child: GestureDetector(

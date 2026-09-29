@@ -368,10 +368,16 @@ class DashboardView extends GetView<DashboardController> {
           onTap: () => Get.toNamed(Routes.addTransaction),
         ),
         _buildActionTile(
-          icon: Icons.document_scanner_rounded,
+          icon: Icons.receipt_long_rounded,
           color: AppColors.secondary,
-          label: 'Scan Receipt',
-          onTap: () => Get.toNamed(Routes.addTransaction),
+          label: 'History',
+          onTap: () {
+            if (Get.isRegistered<NavigationController>()) {
+              Get.find<NavigationController>().changeTab(1);
+            } else {
+              Get.toNamed(Routes.transactions);
+            }
+          },
         ),
         _buildActionTile(
           icon: Icons.bar_chart_rounded,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/services/receipt_scanner_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/utils/app_haptics.dart';
@@ -56,25 +55,7 @@ class AddTransactionController extends GetxController {
     super.onInit();
     final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
     final userTz = storage?.user?['timezone']?.toString();
-    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
-
-    final args = Get.arguments;
-    if (args is Map && args['scanned'] is ScannedReceiptResult) {
-      _applyScannedResult(args['scanned'] as ScannedReceiptResult);
-    }
-  }
-
-  void _applyScannedResult(ScannedReceiptResult result) {
-    if (result.estimatedAmount != null && result.estimatedAmount! > 0) {
-      rawAmount.value = result.estimatedAmount!.toInt().toString();
-    }
-    if (result.merchantName != null && result.merchantName!.isNotEmpty) {
-      descController.text = result.merchantName!;
-    }
-    if (result.date != null) {
-      selectedDate.value = result.date!;
-    }
-  }
+    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);  }
 
   double get amountValue => double.tryParse(rawAmount.value) ?? 0.0;
   bool get isIncome => selectedType.value == 'Income';
@@ -146,26 +127,6 @@ class AddTransactionController extends GetxController {
     }
   }
 
-  Future<void> scanReceipt() async {
-    AppHaptics.medium();
-    final result = await ReceiptScannerService.showScannerModal();
-    if (result != null) {
-      _applyScannedResult(result);
-
-      if (result.estimatedAmount != null) {
-        AppHaptics.success();
-        SnackbarService.success(
-          'Total detected: ${CurrencyFormatter.format(result.estimatedAmount!)}${result.merchantName != null ? " (${result.merchantName})" : ""}',
-          title: 'Receipt Scanned Successfully',
-        );
-      } else {
-        SnackbarService.info(
-          'Receipt image processed. Please review or adjust transaction details.',
-          title: 'Receipt Scan Result',
-        );
-      }
-    }
-  }
 
   void resetForm() {
     rawAmount.value = '0';
