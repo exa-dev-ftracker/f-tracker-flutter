@@ -1,3 +1,4 @@
+import '../../../core/utils/currency_formatter.dart';
 import '../../categories/models/category_model.dart';
 
 class TransactionModel {
@@ -63,15 +64,25 @@ class TransactionModel {
         : createdStr;
     DateTime txDate = createdDt;
     if (dateCandidate != null) {
-      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(dateCandidate);
-      if (match != null) {
-        txDate = DateTime(
-          int.parse(match.group(1)!),
-          int.parse(match.group(2)!),
-          int.parse(match.group(3)!),
-        );
+      final str = dateCandidate.trim();
+      if (str.contains('T') || str.endsWith('Z')) {
+        final parsed = CurrencyFormatter.toUserTimezone(str);
+        txDate = DateTime(parsed.year, parsed.month, parsed.day);
+      } else {
+        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+        if (match != null) {
+          txDate = DateTime(
+            int.parse(match.group(1)!),
+            int.parse(match.group(2)!),
+            int.parse(match.group(3)!),
+          );
+        } else {
+          final parsed = CurrencyFormatter.toUserTimezone(str);
+          txDate = DateTime(parsed.year, parsed.month, parsed.day);
+        }
       }
     }
+
 
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     final isPending = json['isPendingSync'] == true || id.startsWith('temp_');

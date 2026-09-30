@@ -108,16 +108,22 @@ class CurrencyFormatter {
     if (txDate is DateTime) {
       calendarDate = txDate;
     } else if (txDate.toString().isNotEmpty) {
-      final str = txDate.toString();
-      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-      if (match != null) {
-        calendarDate = DateTime(
-          int.parse(match.group(1)!),
-          int.parse(match.group(2)!),
-          int.parse(match.group(3)!),
-        );
+      final str = txDate.toString().trim();
+      if (str.contains('T') || str.endsWith('Z')) {
+        final parsed = toUserTimezone(str, timezone);
+        calendarDate = DateTime(parsed.year, parsed.month, parsed.day);
       } else {
-        calendarDate = DateTime.tryParse(str) ?? DateTime.now();
+        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+        if (match != null) {
+          calendarDate = DateTime(
+            int.parse(match.group(1)!),
+            int.parse(match.group(2)!),
+            int.parse(match.group(3)!),
+          );
+        } else {
+          final parsed = toUserTimezone(str, timezone);
+          calendarDate = DateTime(parsed.year, parsed.month, parsed.day);
+        }
       }
     } else {
       calendarDate = DateTime.now();
@@ -154,12 +160,16 @@ class CurrencyFormatter {
     if (date is DateTime) {
       dt = date;
     } else {
-      final str = date.toString();
-      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-      if (match != null) {
-        dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+      final str = date.toString().trim();
+      if (str.contains('T') || str.endsWith('Z')) {
+        dt = toUserTimezone(str, timezone);
       } else {
-        dt = DateTime.tryParse(str) ?? DateTime.now();
+        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+        if (match != null) {
+          dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+        } else {
+          dt = toUserTimezone(str, timezone);
+        }
       }
     }
     return DateFormat('d MMM', 'en_US').format(dt);
@@ -171,16 +181,21 @@ class CurrencyFormatter {
     if (date is DateTime) {
       dt = date;
     } else {
-      final str = date.toString();
-      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-      if (match != null) {
-        dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+      final str = date.toString().trim();
+      if (str.contains('T') || str.endsWith('Z')) {
+        dt = toUserTimezone(str, timezone);
       } else {
-        dt = DateTime.tryParse(str) ?? DateTime.now();
+        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+        if (match != null) {
+          dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
+        } else {
+          dt = toUserTimezone(str, timezone);
+        }
       }
     }
     return DateFormat('EEE, d MMM yyyy', 'en_US').format(dt);
   }
+
 
   static DateTime nowInTimezone([String? timezone]) {
     return toUserTimezone(DateTime.now().toUtc(), timezone);

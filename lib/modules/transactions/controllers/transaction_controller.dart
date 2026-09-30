@@ -7,7 +7,9 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_error_handler.dart';
 import '../../../core/utils/app_haptics.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../analytics/controllers/analytics_controller.dart';
+
 import '../../categories/models/category_model.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../models/transaction_model.dart';
@@ -81,8 +83,10 @@ class TransactionController extends GetxController {
     }
 
     // 1. Local period / date filter
-    final now = DateTime.now();
+    final userTz = storageService.user?['timezone']?.toString();
+    final now = CurrencyFormatter.nowInTimezone(userTz);
     if (selectedView.value == 'Day') {
+
       final start = DateTime(now.year, now.month, now.day);
       final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
       list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
@@ -342,7 +346,8 @@ class TransactionController extends GetxController {
     String? categoryId,
     DateTime? date,
   }) async {
-    final txDate = date ?? DateTime.now();
+    final txDate = date ?? CurrencyFormatter.nowInTimezone(storageService.user?['timezone']?.toString());
+
 
     // 1. Locate category for local display
     CategoryModel? selectedCat;

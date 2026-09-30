@@ -3,6 +3,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_haptics.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../transactions/controllers/transaction_controller.dart';
 import '../../transactions/models/transaction_model.dart';
 import '../../transactions/repositories/transaction_repository.dart';
@@ -36,8 +37,10 @@ class DashboardController extends GetxController {
             .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
-        final now = DateTime.now();
+        final userTz = storageService.user?['timezone']?.toString();
+        final now = CurrencyFormatter.nowInTimezone(userTz);
         var filtered = allTxs;
+
         if (selectedView.value == 'Day') {
           final start = DateTime(now.year, now.month, now.day);
           final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);

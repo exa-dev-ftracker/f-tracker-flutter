@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+
 import '../../constants/api_endpoints.dart';
 import '../../services/logger_service.dart';
 import '../../services/snackbar_service.dart';
@@ -10,10 +11,7 @@ class AuthInterceptor extends QueuedInterceptor {
   final StorageService storageService;
   final Dio dio;
 
-  AuthInterceptor({
-    required this.storageService,
-    required this.dio,
-  });
+  AuthInterceptor({required this.storageService, required this.dio});
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -21,11 +19,18 @@ class AuthInterceptor extends QueuedInterceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    final userTz = storageService.user?['timezone']?.toString();
+    if (userTz != null && userTz.isNotEmpty) {
+      options.headers['x-timezone'] = userTz;
+    }
     return handler.next(options);
   }
 
   @override
-  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     // 1. Skip auth-specific endpoints to prevent infinite refresh loops
     final path = err.requestOptions.path;
     final isAuthEndpoint = path.contains('/auth/v1/');
@@ -43,7 +48,9 @@ class AuthInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
-    final requestToken = _extractBearerToken(err.requestOptions.headers['Authorization']);
+    final requestToken = _extractBearerToken(
+      err.requestOptions.headers['Authorization'],
+    );
     final currentAccessToken = storageService.accessToken;
 
     // 3. Concurrency check: If another concurrent request already refreshed the access token,
@@ -68,7 +75,10 @@ class AuthInterceptor extends QueuedInterceptor {
     // 4. Perform refresh token request
     String? newAccessToken;
     try {
-      LoggerService.i('Access token expired. Refreshing token...', tag: 'AuthInterceptor');
+      LoggerService.i(
+        'Access token expired. Refreshing token...',
+        tag: 'AuthInterceptor',
+      );
       final refreshDio = Dio(
         BaseOptions(
           baseUrl: ApiEndpoints.baseUrl,
@@ -88,9 +98,7 @@ class AuthInterceptor extends QueuedInterceptor {
           'refresh_token': currentRefreshToken,
         },
         options: Options(
-          headers: {
-            'Authorization': 'Bearer $currentRefreshToken',
-          },
+          headers: {'Authorization': 'Bearer $currentRefreshToken'},
         ),
       );
 
@@ -105,11 +113,13 @@ class AuthInterceptor extends QueuedInterceptor {
           }
         }
 
-        newAccessToken = dataMap?['accessToken']?.toString() ??
+        newAccessToken =
+            dataMap?['accessToken']?.toString() ??
             dataMap?['access_token']?.toString() ??
             dataMap?['token']?.toString();
 
-        final newRefreshToken = dataMap?['refreshToken']?.toString() ??
+        final newRefreshToken =
+            dataMap?['refreshToken']?.toString() ??
             dataMap?['refresh_token']?.toString();
 
         if (newAccessToken != null && newAccessToken.isNotEmpty) {
@@ -117,15 +127,23 @@ class AuthInterceptor extends QueuedInterceptor {
           if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
             await storageService.saveRefreshToken(newRefreshToken);
           }
-          LoggerService.i('Token refreshed successfully.', tag: 'AuthInterceptor');
+          LoggerService.i(
+            'Token refreshed successfully.',
+            tag: 'AuthInterceptor',
+          );
         }
       }
     } catch (refreshErr) {
-      LoggerService.w('Failed to refresh token: $refreshErr', tag: 'AuthInterceptor');
+      LoggerService.w(
+        'Failed to refresh token: $refreshErr',
+        tag: 'AuthInterceptor',
+      );
       await storageService.clearAuth();
       if (Get.context != null && Get.currentRoute != Routes.login) {
         Get.offAllNamed(Routes.login);
-        SnackbarService.warning('Your session has expired. Please log in again.');
+        SnackbarService.warning(
+          'Your session has expired. Please log in again.',
+        );
       }
       return handler.next(err);
     }
@@ -147,7 +165,9 @@ class AuthInterceptor extends QueuedInterceptor {
       await storageService.clearAuth();
       if (Get.context != null && Get.currentRoute != Routes.login) {
         Get.offAllNamed(Routes.login);
-        SnackbarService.warning('Your session has expired. Please log in again.');
+        SnackbarService.warning(
+          'Your session has expired. Please log in again.',
+        );
       }
       return handler.next(err);
     }
