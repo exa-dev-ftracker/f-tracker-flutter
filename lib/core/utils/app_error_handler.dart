@@ -2,11 +2,46 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../services/logger_service.dart';
 import '../services/snackbar_service.dart';
 
 class AppErrorHandler {
   AppErrorHandler._();
+
+  /// Determine if an error was caused by the user cancelling an action (e.g. Apple or Google Sign-In sheet dismissed)
+  static bool isUserCancelled(dynamic error) {
+    if (error == null) return false;
+
+    if (error is SignInWithAppleAuthorizationException) {
+      if (error.code == AuthorizationErrorCode.canceled) return true;
+    }
+
+    if (error is PlatformException) {
+      final code = error.code.toLowerCase();
+      final msg = (error.message ?? '').toLowerCase();
+      if (code == '1001' ||
+          code == 'sign_in_canceled' ||
+          code == 'canceled' ||
+          code == 'cancelled') {
+        return true;
+      }
+      if (msg.contains('canceled') ||
+          msg.contains('cancelled') ||
+          msg.contains('user canceled') ||
+          msg.contains('the user canceled the authorization attempt')) {
+        return true;
+      }
+    }
+
+    final str = error.toString().toLowerCase();
+    return str.contains('authorizationerrorcode.canceled') ||
+        str.contains('sign_in_canceled') ||
+        str.contains('user canceled') ||
+        str.contains('user cancelled') ||
+        str.contains('the user canceled the authorization attempt') ||
+        str.contains('com.apple.authenticationservices.authorizationerror error 1001');
+  }
 
   /// Determine if an error is network/offline related
   static bool isOfflineOrNetworkError(dynamic error) {
@@ -36,8 +71,38 @@ class AppErrorHandler {
   static String getMessage(dynamic error, {String fallback = 'An unexpected error occurred'}) {
     if (error == null) return fallback;
 
+    if (isUserCancelled(error)) {
+      return 'Operation was cancelled.';
+    }
+
+    // 1. Apple Sign-In specific exceptions
+    if (error is SignInWithAppleAuthorizationException) {
+      switch (error.code) {
+        case AuthorizationErrorCode.canceled:
+          return 'Sign-in was cancelled.';
+        case AuthorizationErrorCode.failed:
+          return 'Apple authentication failed. Please try again.';
+        case AuthorizationErrorCode.invalidResponse:
+          return 'Received invalid response from Apple. Please try again.';
+        case AuthorizationErrorCode.notHandled:
+          return 'Apple authorization request was not handled.';
+        case AuthorizationErrorCode.unknown:
+        default:
+          final cleanMsg = error.message.trim();
+          return cleanMsg.isNotEmpty && !cleanMsg.contains('AuthorizationError')
+              ? cleanMsg
+              : 'Failed to authenticate with Apple. Please try again.';
+      }
+    }
+
+    if (error is SignInWithAppleCredentialsException) {
+      final cleanMsg = error.message.trim();
+      return cleanMsg.isNotEmpty ? cleanMsg : 'Unable to verify Apple credentials.';
+    }
+
+    // 2. Dio / HTTP errors
     if (error is DioException) {
-      // 1. Check if backend returned structured error JSON in response body
+      // Check if backend returned structured error JSON in response body
       final responseData = error.response?.data;
       if (responseData is Map) {
         if (responseData['message'] != null && responseData['message'].toString().trim().isNotEmpty) {
@@ -62,7 +127,7 @@ class AppErrorHandler {
         return responseData.trim();
       }
 
-      // 2. Map DioException types
+      // Map DioException types
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
@@ -100,8 +165,15 @@ class AppErrorHandler {
     }
 
     if (error is PlatformException) {
-      if (error.message != null && error.message!.isNotEmpty) {
-        return error.message!;
+      if (error.code == '1001') {
+        return 'Sign-in was cancelled.';
+      }
+      final msg = error.message?.trim();
+      if (msg != null &&
+          msg.isNotEmpty &&
+          !msg.contains('AuthenticationServices') &&
+          !msg.contains('AuthorizationError')) {
+        return msg;
       }
     }
 
@@ -113,7 +185,22 @@ class AppErrorHandler {
       raw = raw.substring('Error: '.length).trim();
     }
 
-    if (raw.isNotEmpty && !raw.startsWith('Instance of ')) {
+    // Sanitize raw syntax signatures so code/class dumps are never shown to user
+    if (raw.contains('AuthorizationErrorCode.canceled') || raw.contains('user canceled')) {
+      return 'Operation was cancelled.';
+    }
+    if (raw.contains('com.apple.AuthenticationServices') || raw.contains('AuthorizationError')) {
+      return 'Apple authentication was cancelled or interrupted.';
+    }
+    if (RegExp(r'^[A-Za-z0-9_]+Exception\(').hasMatch(raw) ||
+        RegExp(r'^[A-Za-z0-9_]+Error\(').hasMatch(raw) ||
+        raw.startsWith('Instance of ') ||
+        raw.contains('StackTrace') ||
+        raw.contains('closure')) {
+      return fallback;
+    }
+
+    if (raw.isNotEmpty) {
       return raw;
     }
 
@@ -129,6 +216,12 @@ class AppErrorHandler {
     bool showSnackbar = true,
     String tag = 'ErrorHandler',
   }) {
+    // If the user deliberately dismissed/cancelled the action, suppress error banner
+    if (isUserCancelled(error)) {
+      LoggerService.d('Action cancelled by user, suppressing error banner: $error', tag: tag);
+      return;
+    }
+
     LoggerService.e('Error handled: $error', error: error, tag: tag);
 
     if (ignoreOffline && isOfflineOrNetworkError(error)) {

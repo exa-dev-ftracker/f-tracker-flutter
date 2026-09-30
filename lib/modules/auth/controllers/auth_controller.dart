@@ -238,11 +238,13 @@ class AuthController extends GetxController {
       SnackbarService.success('Logged in with Google successfully!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      AppErrorHandler.handle(
-        e,
-        fallback: 'Failed to sign in with Google',
-        tag: 'AuthController',
-      );
+      if (!AppErrorHandler.isUserCancelled(e)) {
+        AppErrorHandler.handle(
+          e,
+          fallback: 'Failed to sign in with Google',
+          tag: 'AuthController',
+        );
+      }
     } finally {
       isLoading.value = false;
     }
@@ -293,11 +295,13 @@ class AuthController extends GetxController {
       SnackbarService.success('Logged in with Apple successfully!');
       Get.offAllNamed(Routes.dashboard);
     } catch (e) {
-      AppErrorHandler.handle(
-        e,
-        fallback: 'Failed to sign in with Apple',
-        tag: 'AuthController',
-      );
+      if (!AppErrorHandler.isUserCancelled(e)) {
+        AppErrorHandler.handle(
+          e,
+          fallback: 'Failed to sign in with Apple',
+          tag: 'AuthController',
+        );
+      }
     } finally {
       isLoading.value = false;
     }

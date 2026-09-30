@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../utils/app_error_handler.dart';
 import 'logger_service.dart';
 
 class GoogleAuthResult {
@@ -89,7 +91,20 @@ class SocialAuthService {
         displayName: account.displayName,
         photoUrl: account.photoUrl,
       );
+    } on PlatformException catch (e) {
+      if (e.code == 'sign_in_canceled' ||
+          e.code == '12501' ||
+          e.message?.toLowerCase().contains('cancel') == true) {
+        LoggerService.i('Google Sign-In cancelled by user (PlatformException)', tag: 'SocialAuth');
+        return null;
+      }
+      LoggerService.e('Google Sign-In platform error: $e', error: e, tag: 'SocialAuth');
+      rethrow;
     } catch (e, stack) {
+      if (AppErrorHandler.isUserCancelled(e)) {
+        LoggerService.i('Google Sign-In cancelled by user', tag: 'SocialAuth');
+        return null;
+      }
       LoggerService.e('Error during Google Sign-In: $e', error: e, stackTrace: stack, tag: 'SocialAuth');
       rethrow;
     }
@@ -125,7 +140,25 @@ class SocialAuthService {
         familyName: credential.familyName,
         email: credential.email,
       );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        LoggerService.i('Apple Sign-In cancelled by user', tag: 'SocialAuth');
+        return null;
+      }
+      LoggerService.e('Apple Sign-In authorization error: ${e.code} - ${e.message}', error: e, tag: 'SocialAuth');
+      rethrow;
+    } on PlatformException catch (e) {
+      if (e.code == '1001' || e.message?.toLowerCase().contains('cancel') == true) {
+        LoggerService.i('Apple Sign-In cancelled by user (PlatformException)', tag: 'SocialAuth');
+        return null;
+      }
+      LoggerService.e('Apple Sign-In platform error: $e', error: e, tag: 'SocialAuth');
+      rethrow;
     } catch (e, stack) {
+      if (AppErrorHandler.isUserCancelled(e)) {
+        LoggerService.i('Apple Sign-In cancelled by user', tag: 'SocialAuth');
+        return null;
+      }
       LoggerService.e('Error during Apple Sign-In: $e', error: e, stackTrace: stack, tag: 'SocialAuth');
       rethrow;
     }

@@ -65,8 +65,11 @@ class SettingsController extends GetxController {
       AppHaptics.success();
       SnackbarService.success('Timezone updated to $newTimezone');
     } catch (e) {
-      LoggerService.e('Failed to update timezone: $e', tag: 'SettingsController');
-      SnackbarService.error('Failed to update timezone');
+      AppErrorHandler.handle(
+        e,
+        fallback: 'Failed to update timezone',
+        tag: 'SettingsController',
+      );
     } finally {
       isLoading.value = false;
     }
