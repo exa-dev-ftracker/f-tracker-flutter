@@ -5,11 +5,13 @@ import '../utils/app_haptics.dart';
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
+  final String label;
 
   const GoogleSignInButton({
     super.key,
     required this.onPressed,
     this.isLoading = false,
+    this.label = 'Continue with Google',
   });
 
   @override
@@ -47,9 +49,9 @@ class GoogleSignInButton extends StatelessWidget {
             else ...[
               _buildGoogleIcon(),
               const SizedBox(width: 12),
-              const Text(
-                'Continue with Google',
-                style: TextStyle(
+              Text(
+                label,
+                style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -74,11 +76,13 @@ class GoogleSignInButton extends StatelessWidget {
 class AppleSignInButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
+  final String label;
 
   const AppleSignInButton({
     super.key,
     required this.onPressed,
     this.isLoading = false,
+    this.label = 'Continue with Apple',
   });
 
   @override
@@ -115,9 +119,9 @@ class AppleSignInButton extends StatelessWidget {
             else ...[
               const Icon(Icons.apple, color: Colors.black, size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Continue with Apple',
-                style: TextStyle(
+              Text(
+                label,
+                style: const TextStyle(
                   color: Colors.black,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/social_login_buttons.dart';
 import '../controllers/auth_controller.dart';
 
 class RegisterView extends GetView<AuthController> {
@@ -97,7 +98,50 @@ class RegisterView extends GetView<AuthController> {
                         )
                       : const Text('Register'),
                 )),
+                const SizedBox(height: 22),
+
+                // Divider "OR"
+                Row(
+                  children: [
+                    Expanded(child: Container(height: 1, color: AppColors.border)),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'OR',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Container(height: 1, color: AppColors.border)),
+                  ],
+                ),
                 const SizedBox(height: 20),
+
+                // Social Sign-Up Buttons
+                Obx(() => GoogleSignInButton(
+                  label: 'Sign up with Google',
+                  isLoading: controller.isLoading.value,
+                  onPressed: controller.isLoading.value ? null : controller.loginWithGoogle,
+                )),
+
+                Obx(() {
+                  if (!controller.isAppleAvailable.value) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      AppleSignInButton(
+                        label: 'Sign up with Apple',
+                        isLoading: controller.isLoading.value,
+                        onPressed: controller.isLoading.value ? null : controller.loginWithApple,
+                      ),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 24),
 
                 // Back to Login Link
                 Row(
