@@ -70,4 +70,54 @@ class TransactionRepository {
     }
     return {};
   }
+
+  Future<Map<String, dynamic>> getAvailableIncomes({
+    int page = 1,
+    int limit = 10,
+    String? search,
+  }) async {
+    final query = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+    };
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+
+    final response = await apiClient.get(
+      ApiEndpoints.availableIncomes,
+      queryParameters: query,
+    );
+    final data = response.data;
+    List list = [];
+    bool hasMore = false;
+    int total = 0;
+
+    if (data is Map && data['data'] != null) {
+      final inner = data['data'];
+      if (inner is Map) {
+        if (inner['incomes'] is List) {
+          list = inner['incomes'];
+        }
+        if (inner['pagination'] is Map) {
+          hasMore = inner['pagination']['hasMore'] == true;
+          total = (inner['pagination']['total'] as num?)?.toInt() ?? 0;
+        }
+      } else if (inner is List) {
+        list = inner;
+      }
+    } else if (data is List) {
+      list = data;
+    }
+
+    final models = list
+        .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    return {
+      'incomes': models,
+      'hasMore': hasMore,
+      'total': total,
+    };
+  }
 }

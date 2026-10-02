@@ -173,6 +173,36 @@ class TransactionCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
+                          if (transaction.linkedIncomeDescription != null && transaction.linkedIncomeDescription!.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.income.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.link_rounded, size: 10, color: AppColors.income),
+                                  const SizedBox(width: 3),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 90),
+                                    child: Text(
+                                      transaction.linkedIncomeDescription!,
+                                      style: const TextStyle(
+                                        color: AppColors.income,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (transaction.isPendingSync) ...[
                             const SizedBox(width: 6),
                             Container(
@@ -355,6 +385,24 @@ class TransactionCard extends StatelessWidget {
               value: transaction.isPendingSync ? 'Offline (Pending Sync)' : 'Synced',
               color: transaction.isPendingSync ? AppColors.warning : AppColors.success,
             ),
+            if (transaction.linkedIncomeDescription != null && transaction.linkedIncomeDescription!.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildDetailRow(
+                icon: Icons.link_rounded,
+                label: 'Funded By',
+                value: transaction.linkedIncomeDescription!,
+                color: AppColors.income,
+              ),
+            ],
+            if (isIncome && transaction.remainingAmount != null) ...[
+              const SizedBox(height: 10),
+              _buildDetailRow(
+                icon: Icons.savings_outlined,
+                label: 'Remaining Balance',
+                value: '${CurrencyFormatter.format(transaction.remainingAmount!)} (${(transaction.percentageUsed ?? 0).toStringAsFixed(1)}% used)',
+                color: transaction.remainingAmount! < 0 ? AppColors.expense : AppColors.income,
+              ),
+            ],
             if (onDelete != null) ...[
               const SizedBox(height: 20),
               Row(

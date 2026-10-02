@@ -22,6 +22,7 @@ class ApiEndpoints {
   // Transactions
   static const String transactions = '/api/v1/transactions';
   static const String transactionSummary = '/api/v1/transactions/summary';
+  static const String availableIncomes = '/api/v1/transactions/incomes/available';
   static String transactionDetail(String id) => '/api/v1/transactions/$id';
 
   // Categories

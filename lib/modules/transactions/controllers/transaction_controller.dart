@@ -339,11 +339,29 @@ class TransactionController extends GetxController {
     }
   }
 
+  Future<Map<String, dynamic>> getAvailableIncomes({
+    int page = 1,
+    int limit = 10,
+    String? search,
+  }) async {
+    try {
+      return await repository.getAvailableIncomes(
+        page: page,
+        limit: limit,
+        search: search,
+      );
+    } catch (e) {
+      LoggerService.e('Failed to fetch available incomes: $e', tag: 'TransactionController');
+      return {'incomes': <TransactionModel>[], 'hasMore': false, 'total': 0};
+    }
+  }
+
   Future<bool> addTransaction({
     required double amount,
     required String type,
     required String description,
     String? categoryId,
+    String? linkedIncomeId,
     DateTime? date,
   }) async {
     final txDate = date ?? CurrencyFormatter.nowInTimezone(storageService.user?['timezone']?.toString());
@@ -375,6 +393,7 @@ class TransactionController extends GetxController {
       date: calendarDate,
       createdAt: now,
       isPendingSync: true,
+      linkedIncomeId: linkedIncomeId,
     );
 
     // Optimistic insert
@@ -409,6 +428,7 @@ class TransactionController extends GetxController {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+        if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) 'linkedIncomeId': linkedIncomeId,
         'date': dateIso,
       });
 
@@ -451,6 +471,7 @@ class TransactionController extends GetxController {
     required String type,
     required String description,
     String? categoryId,
+    String? linkedIncomeId,
     DateTime? date,
   }) async {
     final oldTransactions = List<TransactionModel>.from(transactions);
@@ -479,6 +500,7 @@ class TransactionController extends GetxController {
       description: description,
       category: selectedCat,
       date: calendarDate,
+      linkedIncomeId: linkedIncomeId,
     );
     transactions.refresh();
     _recalculateSummary();
@@ -510,6 +532,7 @@ class TransactionController extends GetxController {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+        'linkedIncomeId': linkedIncomeId ?? '',
         'date': dateIso,
       });
 

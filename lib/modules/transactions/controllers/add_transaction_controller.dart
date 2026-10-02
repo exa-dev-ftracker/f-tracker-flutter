@@ -8,6 +8,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../categories/controllers/category_controller.dart';
 import '../../categories/models/category_model.dart';
 import '../../categories/repositories/category_repository.dart';
+import '../models/transaction_model.dart';
 import 'transaction_controller.dart';
 
 class AddTransactionController extends GetxController {
@@ -45,17 +46,95 @@ class AddTransactionController extends GetxController {
   final selectedType = 'Expense'.obs;
   final rawAmount = '0'.obs;
   final selectedCategoryId = RxnString();
+  final selectedLinkedIncomeId = RxnString();
+  final selectedLinkedIncomeTitle = RxnString();
+  final availableIncomes = <TransactionModel>[].obs;
+  final isLoadingIncomes = false.obs;
+  final isLoadingMoreIncomes = false.obs;
+  final hasMoreIncomes = true.obs;
+  final incomePage = 1.obs;
+  final incomeSearchQuery = ''.obs;
   final selectedDate = Rx<DateTime>(DateTime.now());
   final isSubmitting = false.obs;
 
   final TextEditingController descController = TextEditingController();
+  final TextEditingController incomeSearchController = TextEditingController();
+  final ScrollController incomeScrollController = ScrollController();
 
   @override
   void onInit() {
     super.onInit();
     final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
     final userTz = storage?.user?['timezone']?.toString();
-    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);  }
+    selectedDate.value = CurrencyFormatter.nowInTimezone(userTz);
+    loadAvailableIncomes(reset: true);
+
+    incomeScrollController.addListener(_onIncomeScroll);
+  }
+
+  void _onIncomeScroll() {
+    if (incomeScrollController.position.pixels >=
+        incomeScrollController.position.maxScrollExtent - 100) {
+      loadMoreIncomes();
+    }
+  }
+
+  Future<void> loadAvailableIncomes({bool reset = false}) async {
+    if (reset) {
+      incomePage.value = 1;
+      hasMoreIncomes.value = true;
+      availableIncomes.clear();
+    }
+    if (isLoadingIncomes.value || isLoadingMoreIncomes.value) return;
+
+    if (incomePage.value == 1) {
+      isLoadingIncomes.value = true;
+    } else {
+      isLoadingMoreIncomes.value = true;
+    }
+
+    try {
+      final res = await txController.getAvailableIncomes(
+        page: incomePage.value,
+        limit: 10,
+        search: incomeSearchQuery.value,
+      );
+      final List<TransactionModel> list = (res['incomes'] as List<TransactionModel>?) ?? [];
+      final bool more = res['hasMore'] == true;
+
+      if (incomePage.value == 1) {
+        availableIncomes.assignAll(list);
+      } else {
+        availableIncomes.addAll(list);
+      }
+      hasMoreIncomes.value = more;
+    } finally {
+      isLoadingIncomes.value = false;
+      isLoadingMoreIncomes.value = false;
+    }
+  }
+
+  void loadMoreIncomes() {
+    if (!hasMoreIncomes.value || isLoadingIncomes.value || isLoadingMoreIncomes.value) return;
+    incomePage.value++;
+    loadAvailableIncomes();
+  }
+
+  void searchIncomes(String query) {
+    incomeSearchQuery.value = query;
+    loadAvailableIncomes(reset: true);
+  }
+
+  void selectLinkedIncome(TransactionModel? income) {
+    AppHaptics.selection();
+    if (income == null) {
+      selectedLinkedIncomeId.value = null;
+      selectedLinkedIncomeTitle.value = null;
+    } else {
+      selectedLinkedIncomeId.value = income.id;
+      selectedLinkedIncomeTitle.value = income.description;
+    }
+  }
 
   double get amountValue => double.tryParse(rawAmount.value) ?? 0.0;
   bool get isIncome => selectedType.value == 'Income';
@@ -67,6 +146,12 @@ class AddTransactionController extends GetxController {
     AppHaptics.selection();
     selectedType.value = type;
     selectedCategoryId.value = null;
+    if (type == 'Income') {
+      selectedLinkedIncomeId.value = null;
+      selectedLinkedIncomeTitle.value = null;
+    } else {
+      loadAvailableIncomes();
+    }
   }
 
   void selectCategory(String? categoryId) {
@@ -132,6 +217,8 @@ class AddTransactionController extends GetxController {
     rawAmount.value = '0';
     descController.clear();
     selectedCategoryId.value = null;
+    selectedLinkedIncomeId.value = null;
+    selectedLinkedIncomeTitle.value = null;
     selectedType.value = 'Expense';
     final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
     final userTz = storage?.user?['timezone']?.toString();
@@ -155,6 +242,7 @@ class AddTransactionController extends GetxController {
         type: selectedType.value,
         description: desc,
         categoryId: selectedCategoryId.value,
+        linkedIncomeId: isIncome ? null : selectedLinkedIncomeId.value,
         date: selectedDate.value,
       );
 
@@ -176,6 +264,8 @@ class AddTransactionController extends GetxController {
   @override
   void onClose() {
     descController.dispose();
+    incomeSearchController.dispose();
+    incomeScrollController.dispose();
     super.onClose();
   }
 }
