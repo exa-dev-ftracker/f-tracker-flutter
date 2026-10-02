@@ -4,11 +4,25 @@ import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/services/storage_service.dart';
 import '../../../routes/app_routes.dart';
 import '../controllers/settings_controller.dart';
 
-class SettingsView extends GetView<SettingsController> {
+class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
+
+  SettingsController get controller {
+    if (!Get.isRegistered<SettingsController>()) {
+      return Get.put(
+        SettingsController(
+          apiClient: Get.find<ApiClient>(),
+          storageService: Get.find<StorageService>(),
+        ),
+      );
+    }
+    return Get.find<SettingsController>();
+  }
 
   @override
   Widget build(BuildContext context) {

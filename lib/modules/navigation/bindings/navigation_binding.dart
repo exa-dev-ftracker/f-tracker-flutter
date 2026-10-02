@@ -16,44 +16,44 @@ class NavigationBinding extends Bindings {
   @override
   void dependencies() {
     // 1. Navigation Shell Controller
-    Get.lazyPut<NavigationController>(() => NavigationController());
+    Get.lazyPut<NavigationController>(() => NavigationController(), fenix: true);
 
     final apiClient = Get.find<ApiClient>();
     final storageService = Get.find<StorageService>();
 
     // 2. Categories
     if (!Get.isRegistered<CategoryRepository>()) {
-      Get.lazyPut<CategoryRepository>(() => CategoryRepository(apiClient: apiClient));
+      Get.lazyPut<CategoryRepository>(() => CategoryRepository(apiClient: apiClient), fenix: true);
     }
     if (!Get.isRegistered<CategoryController>()) {
-      Get.lazyPut<CategoryController>(() => CategoryController(repository: Get.find<CategoryRepository>()));
+      Get.lazyPut<CategoryController>(() => CategoryController(repository: Get.find<CategoryRepository>()), fenix: true);
     }
 
     // 3. Dashboard
     if (!Get.isRegistered<DashboardRepository>()) {
-      Get.lazyPut<DashboardRepository>(() => DashboardRepository(apiClient: apiClient));
+      Get.lazyPut<DashboardRepository>(() => DashboardRepository(apiClient: apiClient), fenix: true);
     }
     if (!Get.isRegistered<DashboardController>()) {
-      Get.lazyPut<DashboardController>(() => DashboardController(repository: Get.find<DashboardRepository>()));
+      Get.lazyPut<DashboardController>(() => DashboardController(repository: Get.find<DashboardRepository>()), fenix: true);
     }
 
     // 4. Transactions
     if (!Get.isRegistered<TransactionRepository>()) {
-      Get.lazyPut<TransactionRepository>(() => TransactionRepository(apiClient: apiClient));
+      Get.lazyPut<TransactionRepository>(() => TransactionRepository(apiClient: apiClient), fenix: true);
     }
     if (!Get.isRegistered<TransactionController>()) {
       Get.lazyPut<TransactionController>(() => TransactionController(
         repository: Get.find<TransactionRepository>(),
         storageService: storageService,
-      ));
+      ), fenix: true);
     }
 
     // 5. Analytics
     if (!Get.isRegistered<AnalyticsRepository>()) {
-      Get.lazyPut<AnalyticsRepository>(() => AnalyticsRepository(apiClient: apiClient));
+      Get.lazyPut<AnalyticsRepository>(() => AnalyticsRepository(apiClient: apiClient), fenix: true);
     }
     if (!Get.isRegistered<AnalyticsController>()) {
-      Get.lazyPut<AnalyticsController>(() => AnalyticsController(repository: Get.find<AnalyticsRepository>()));
+      Get.lazyPut<AnalyticsController>(() => AnalyticsController(repository: Get.find<AnalyticsRepository>()), fenix: true);
     }
 
     // 6. Settings
@@ -61,7 +61,7 @@ class NavigationBinding extends Bindings {
       Get.lazyPut<SettingsController>(() => SettingsController(
         apiClient: apiClient,
         storageService: storageService,
-      ));
+      ), fenix: true);
     }
   }
 }

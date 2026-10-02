@@ -4,11 +4,28 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/category_icon_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/network/api_client.dart';
 import '../controllers/analytics_controller.dart';
 import '../models/analytics_model.dart';
+import '../repositories/analytics_repository.dart';
 
-class AnalyticsView extends GetView<AnalyticsController> {
+class AnalyticsView extends StatelessWidget {
   const AnalyticsView({super.key});
+
+  AnalyticsController get controller {
+    if (!Get.isRegistered<AnalyticsController>()) {
+      if (!Get.isRegistered<AnalyticsRepository>()) {
+        Get.lazyPut<AnalyticsRepository>(
+          () => AnalyticsRepository(apiClient: Get.find<ApiClient>()),
+          fenix: true,
+        );
+      }
+      return Get.put(
+        AnalyticsController(repository: Get.find<AnalyticsRepository>()),
+      );
+    }
+    return Get.find<AnalyticsController>();
+  }
 
   @override
   Widget build(BuildContext context) {

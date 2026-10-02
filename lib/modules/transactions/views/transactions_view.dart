@@ -7,11 +7,32 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/offline_sync_banner.dart';
 import '../../../routes/app_routes.dart';
 import '../../navigation/controllers/navigation_controller.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/services/storage_service.dart';
 import '../controllers/transaction_controller.dart';
+import '../repositories/transaction_repository.dart';
 import 'widgets/transaction_card.dart';
 
-class TransactionsView extends GetView<TransactionController> {
+class TransactionsView extends StatelessWidget {
   const TransactionsView({super.key});
+
+  TransactionController get controller {
+    if (!Get.isRegistered<TransactionController>()) {
+      if (!Get.isRegistered<TransactionRepository>()) {
+        Get.lazyPut<TransactionRepository>(
+          () => TransactionRepository(apiClient: Get.find<ApiClient>()),
+          fenix: true,
+        );
+      }
+      return Get.put(
+        TransactionController(
+          repository: Get.find<TransactionRepository>(),
+          storageService: Get.find<StorageService>(),
+        ),
+      );
+    }
+    return Get.find<TransactionController>();
+  }
 
   static const _monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',

@@ -6,11 +6,17 @@ import '../repositories/analytics_repository.dart';
 class AnalyticsBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<AnalyticsRepository>(
-      () => AnalyticsRepository(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut<AnalyticsController>(
-      () => AnalyticsController(repository: Get.find<AnalyticsRepository>()),
-    );
+    if (!Get.isRegistered<AnalyticsRepository>()) {
+      Get.lazyPut<AnalyticsRepository>(
+        () => AnalyticsRepository(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<AnalyticsController>()) {
+      Get.lazyPut<AnalyticsController>(
+        () => AnalyticsController(repository: Get.find<AnalyticsRepository>()),
+        fenix: true,
+      );
+    }
   }
 }

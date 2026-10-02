@@ -6,11 +6,17 @@ import '../repositories/category_repository.dart';
 class CategoryBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<CategoryRepository>(
-      () => CategoryRepository(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut<CategoryController>(
-      () => CategoryController(repository: Get.find<CategoryRepository>()),
-    );
+    if (!Get.isRegistered<CategoryRepository>()) {
+      Get.lazyPut<CategoryRepository>(
+        () => CategoryRepository(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<CategoryController>()) {
+      Get.lazyPut<CategoryController>(
+        () => CategoryController(repository: Get.find<CategoryRepository>()),
+        fenix: true,
+      );
+    }
   }
 }

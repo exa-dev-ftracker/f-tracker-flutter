@@ -497,18 +497,26 @@ class SyncService extends GetxService {
 
   void _refreshActiveControllers() {
     if (Get.isRegistered<TransactionController>()) {
-      final txCtrl = Get.find<TransactionController>();
-      txCtrl.fetchTransactions();
-      txCtrl.fetchFullHistory();
+      try {
+        final txCtrl = Get.find<TransactionController>();
+        txCtrl.fetchTransactions();
+        txCtrl.fetchFullHistory();
+      } catch (_) {}
     }
     if (Get.isRegistered<DashboardController>()) {
-      Get.find<DashboardController>().fetchDashboard();
+      try {
+        Get.find<DashboardController>().fetchDashboard();
+      } catch (_) {}
     }
     if (Get.isRegistered<AnalyticsController>()) {
-      Get.find<AnalyticsController>().fetchAnalytics();
+      try {
+        Get.find<AnalyticsController>().fetchAnalytics();
+      } catch (_) {}
     }
     if (Get.isRegistered<CategoryController>()) {
-      Get.find<CategoryController>().fetchCategories();
+      try {
+        Get.find<CategoryController>().fetchCategories();
+      } catch (_) {}
     }
   }
 

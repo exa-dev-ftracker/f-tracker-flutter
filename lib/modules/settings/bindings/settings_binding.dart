@@ -6,11 +6,14 @@ import '../controllers/settings_controller.dart';
 class SettingsBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<SettingsController>(
-      () => SettingsController(
-        apiClient: Get.find<ApiClient>(),
-        storageService: Get.find<StorageService>(),
-      ),
-    );
+    if (!Get.isRegistered<SettingsController>()) {
+      Get.lazyPut<SettingsController>(
+        () => SettingsController(
+          apiClient: Get.find<ApiClient>(),
+          storageService: Get.find<StorageService>(),
+        ),
+        fenix: true,
+      );
+    }
   }
 }

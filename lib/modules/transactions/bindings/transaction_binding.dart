@@ -13,24 +13,33 @@ class TransactionBinding extends Bindings {
     if (!Get.isRegistered<CategoryRepository>()) {
       Get.lazyPut<CategoryRepository>(
         () => CategoryRepository(apiClient: Get.find<ApiClient>()),
+        fenix: true,
       );
     }
     if (!Get.isRegistered<CategoryController>()) {
       Get.lazyPut<CategoryController>(
         () => CategoryController(repository: Get.find<CategoryRepository>()),
+        fenix: true,
       );
     }
-    Get.lazyPut<TransactionRepository>(
-      () => TransactionRepository(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut<TransactionController>(
-      () => TransactionController(
-        repository: Get.find<TransactionRepository>(),
-        storageService: Get.find<StorageService>(),
-      ),
-    );
+    if (!Get.isRegistered<TransactionRepository>()) {
+      Get.lazyPut<TransactionRepository>(
+        () => TransactionRepository(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<TransactionController>()) {
+      Get.lazyPut<TransactionController>(
+        () => TransactionController(
+          repository: Get.find<TransactionRepository>(),
+          storageService: Get.find<StorageService>(),
+        ),
+        fenix: true,
+      );
+    }
     Get.lazyPut<AddTransactionController>(
       () => AddTransactionController(),
+      fenix: true,
     );
   }
 }

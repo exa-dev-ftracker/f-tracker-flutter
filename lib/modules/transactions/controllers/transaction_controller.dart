@@ -332,10 +332,14 @@ class TransactionController extends GetxController {
 
   void notifyGlobalStateChange() {
     if (Get.isRegistered<DashboardController>()) {
-      Get.find<DashboardController>().fetchDashboard();
+      try {
+        Get.find<DashboardController>().fetchDashboard();
+      } catch (_) {}
     }
     if (Get.isRegistered<AnalyticsController>()) {
-      Get.find<AnalyticsController>().fetchAnalytics();
+      try {
+        Get.find<AnalyticsController>().fetchAnalytics();
+      } catch (_) {}
     }
   }
 

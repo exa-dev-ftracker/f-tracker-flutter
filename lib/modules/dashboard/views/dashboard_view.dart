@@ -9,10 +9,27 @@ import '../../../core/widgets/offline_sync_banner.dart';
 import '../../../routes/app_routes.dart';
 import '../../navigation/controllers/navigation_controller.dart';
 import '../../transactions/views/widgets/transaction_card.dart';
+import '../../../core/network/api_client.dart';
 import '../controllers/dashboard_controller.dart';
+import '../repositories/dashboard_repository.dart';
 
-class DashboardView extends GetView<DashboardController> {
+class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
+
+  DashboardController get controller {
+    if (!Get.isRegistered<DashboardController>()) {
+      if (!Get.isRegistered<DashboardRepository>()) {
+        Get.lazyPut<DashboardRepository>(
+          () => DashboardRepository(apiClient: Get.find<ApiClient>()),
+          fenix: true,
+        );
+      }
+      return Get.put(
+        DashboardController(repository: Get.find<DashboardRepository>()),
+      );
+    }
+    return Get.find<DashboardController>();
+  }
 
   @override
   Widget build(BuildContext context) {
