@@ -291,11 +291,24 @@ class TransactionsView extends StatelessWidget {
                 }
 
                 return ListView.separated(
+                  controller: controller.scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  itemCount: controller.transactions.length,
+                  itemCount: controller.transactions.length + (controller.isLoadingMore.value ? 1 : 0),
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
+                    if (index == controller.transactions.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          ),
+                        ),
+                      );
+                    }
                     final tx = controller.transactions[index];
                     return TransactionCard(
                       transaction: tx,

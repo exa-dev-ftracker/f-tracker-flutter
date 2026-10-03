@@ -2,12 +2,24 @@ import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../models/transaction_model.dart';
 
+class PaginatedTransactionsResponse {
+  final List<TransactionModel> items;
+  final String? nextCursor;
+  final bool hasMore;
+
+  PaginatedTransactionsResponse({
+    required this.items,
+    this.nextCursor,
+    this.hasMore = false,
+  });
+}
+
 class TransactionRepository {
   final ApiClient apiClient;
 
   TransactionRepository({required this.apiClient});
 
-  Future<List<TransactionModel>> getTransactions({
+  Future<PaginatedTransactionsResponse> getTransactionsPaginated({
     String? view,
     String? type,
     String? category,
@@ -15,6 +27,8 @@ class TransactionRepository {
     String? sort,
     int? year,
     int? month,
+    String? cursor,
+    int limit = 20,
   }) async {
     final query = <String, dynamic>{};
     if (view != null && view.isNotEmpty) query['view'] = view;
@@ -24,6 +38,8 @@ class TransactionRepository {
     if (sort != null && sort.isNotEmpty) query['sort'] = sort;
     if (year != null) query['year'] = year.toString();
     if (month != null) query['month'] = month.toString();
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    query['limit'] = limit.toString();
 
     final response = await apiClient.get(
       ApiEndpoints.transactions,
@@ -32,15 +48,60 @@ class TransactionRepository {
 
     final data = response.data;
     List list = [];
-    if (data is Map && data['data'] is List) {
-      list = data['data'];
+    String? nextCursor;
+    bool hasMore = false;
+
+    if (data is Map && data['data'] != null) {
+      final d = data['data'];
+      if (d is Map) {
+        if (d['items'] is List) {
+          list = d['items'];
+        }
+        if (d['pagination'] is Map) {
+          nextCursor = d['pagination']['nextCursor'];
+          hasMore = d['pagination']['hasMore'] == true;
+        }
+      } else if (d is List) {
+        list = d;
+      }
     } else if (data is List) {
       list = data;
     }
 
-    return list
+    final items = list
         .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+
+    return PaginatedTransactionsResponse(
+      items: items,
+      nextCursor: nextCursor,
+      hasMore: hasMore,
+    );
+  }
+
+  Future<List<TransactionModel>> getTransactions({
+    String? view,
+    String? type,
+    String? category,
+    String? search,
+    String? sort,
+    int? year,
+    int? month,
+    String? cursor,
+    int? limit,
+  }) async {
+    final res = await getTransactionsPaginated(
+      view: view,
+      type: type,
+      category: category,
+      search: search,
+      sort: sort,
+      year: year,
+      month: month,
+      cursor: cursor,
+      limit: limit ?? 20,
+    );
+    return res.items;
   }
 
   Future<TransactionModel> createTransaction(Map<String, dynamic> payload) async {
@@ -62,8 +123,26 @@ class TransactionRepository {
     return response.statusCode == 200;
   }
 
-  Future<Map<String, dynamic>> getSummary() async {
-    final response = await apiClient.get(ApiEndpoints.transactionSummary);
+  Future<Map<String, dynamic>> getSummary({
+    String? view,
+    String? type,
+    String? category,
+    String? search,
+    int? year,
+    int? month,
+  }) async {
+    final query = <String, dynamic>{};
+    if (view != null && view.isNotEmpty) query['view'] = view;
+    if (type != null && type.isNotEmpty) query['type'] = type;
+    if (category != null && category.isNotEmpty && category != 'all') query['category'] = category;
+    if (search != null && search.isNotEmpty) query['search'] = search;
+    if (year != null) query['year'] = year.toString();
+    if (month != null) query['month'] = month.toString();
+
+    final response = await apiClient.get(
+      ApiEndpoints.transactionSummary,
+      queryParameters: query,
+    );
     final data = response.data;
     if (data is Map && data['data'] is Map) {
       return Map<String, dynamic>.from(data['data']);

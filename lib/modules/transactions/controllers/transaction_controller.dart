@@ -47,6 +47,12 @@ class TransactionController extends GetxController {
   final expenseTotal = 0.0.obs;
   final balance = 0.0.obs;
 
+  // Pagination & Infinite Scroll
+  final nextCursor = Rxn<String>();
+  final hasMore = true.obs;
+  final isLoadingMore = false.obs;
+  final scrollController = ScrollController();
+
   SyncService get syncService => Get.find<SyncService>();
 
   List<CategoryModel> get availableCategories {
@@ -161,16 +167,25 @@ class TransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    scrollController.addListener(_onScroll);
     _loadCachedTransactions();
     fetchTransactions();
-    // Background full sync so local cache contains all historical data for offline filtering
+    // Background full sync so local cache contains historical data
     fetchFullHistory();
+  }
+
+  void _onScroll() {
+    if (scrollController.hasClients &&
+        scrollController.position.pixels >=
+            scrollController.position.maxScrollExtent - 200) {
+      loadMoreTransactions();
+    }
   }
 
   Future<void> fetchFullHistory() async {
     if (!syncService.isOnline.value) return;
     try {
-      final allResult = await repository.getTransactions(view: 'All');
+      final allResult = await repository.getTransactions(view: 'All', limit: 100);
       final existingCached = storageService.cachedTransactions;
       final cachedMap = <String, Map<String, dynamic>>{};
       for (final item in existingCached) {
@@ -190,15 +205,22 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<void> fetchTransactions() async {
+  Future<void> fetchTransactions({bool isRefresh = true}) async {
     try {
-      isLoading.value = true;
+      if (isRefresh) {
+        isLoading.value = true;
+        nextCursor.value = null;
+        hasMore.value = true;
+      }
       if (!syncService.isOnline.value) {
         _loadCachedTransactions();
         return;
       }
 
-      final result = await repository.getTransactions(
+      // Fetch summary in parallel for accurate KPI cards
+      _fetchSummary();
+
+      final res = await repository.getTransactionsPaginated(
         view: selectedView.value,
         type: selectedType.value.isNotEmpty ? selectedType.value : null,
         category: selectedCategory.value.isNotEmpty && selectedCategory.value != 'all'
@@ -208,22 +230,24 @@ class TransactionController extends GetxController {
         sort: selectedSort.value,
         year: filterYear.value,
         month: filterMonth.value,
+        limit: 20,
       );
+
+      nextCursor.value = res.nextCursor;
+      hasMore.value = res.hasMore;
 
       // Preserve any pending local items awaiting sync
       final pendingItems = transactions.where((t) => t.isPendingSync).toList();
       final merged = <TransactionModel>[...pendingItems];
-      for (final r in result) {
+      for (final r in res.items) {
         if (!merged.any((m) => m.id == r.id)) {
           merged.add(r);
         }
       }
 
       transactions.assignAll(merged);
-      _recalculateSummary();
 
-      // Smart cache merge: update/insert fetched items into the full cached transaction pool
-      // so other months/years previously stored in cache are NOT wiped!
+      // Smart cache merge
       final existingCached = storageService.cachedTransactions;
       final cachedMap = <String, Map<String, dynamic>>{};
       for (final item in existingCached) {
@@ -241,8 +265,79 @@ class TransactionController extends GetxController {
       );
       _loadCachedTransactions();
     } finally {
-      isLoading.value = false;
+      if (isRefresh) {
+        isLoading.value = false;
+      }
     }
+  }
+
+  Future<void> loadMoreTransactions() async {
+    if (isLoading.value || isLoadingMore.value || !hasMore.value || nextCursor.value == null) {
+      return;
+    }
+
+    try {
+      isLoadingMore.value = true;
+      final res = await repository.getTransactionsPaginated(
+        view: selectedView.value,
+        type: selectedType.value.isNotEmpty ? selectedType.value : null,
+        category: selectedCategory.value.isNotEmpty && selectedCategory.value != 'all'
+            ? selectedCategory.value
+            : null,
+        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        sort: selectedSort.value,
+        year: filterYear.value,
+        month: filterMonth.value,
+        cursor: nextCursor.value,
+        limit: 20,
+      );
+
+      nextCursor.value = res.nextCursor;
+      hasMore.value = res.hasMore;
+
+      // Deduplicate before appending
+      final existingIds = transactions.map((t) => t.id).toSet();
+      final uniqueNew = res.items.where((t) => !existingIds.contains(t.id)).toList();
+      transactions.addAll(uniqueNew);
+
+      // Cache merge
+      final existingCached = storageService.cachedTransactions;
+      final cachedMap = <String, Map<String, dynamic>>{};
+      for (final item in existingCached) {
+        final id = item['id']?.toString() ?? item['_id']?.toString();
+        if (id != null) cachedMap[id] = Map<String, dynamic>.from(item);
+      }
+      for (final item in uniqueNew) {
+        cachedMap[item.id] = item.toJson();
+      }
+      await storageService.saveCachedTransactions(cachedMap.values.toList());
+    } catch (e) {
+      LoggerService.e('Failed to load more transactions: $e', tag: 'TransactionController');
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  Future<void> _fetchSummary() async {
+    try {
+      final summary = await repository.getSummary(
+        view: selectedView.value,
+        type: selectedType.value.isNotEmpty ? selectedType.value : null,
+        category: selectedCategory.value.isNotEmpty && selectedCategory.value != 'all'
+            ? selectedCategory.value
+            : null,
+        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        year: filterYear.value,
+        month: filterMonth.value,
+      );
+      if (summary.isNotEmpty) {
+        incomeTotal.value = (summary['incomeTotal'] as num?)?.toDouble() ?? 0.0;
+        expenseTotal.value = (summary['expenseTotal'] as num?)?.toDouble() ?? 0.0;
+        balance.value = (summary['balance'] as num?)?.toDouble() ?? 0.0;
+        return;
+      }
+    } catch (_) {}
+    _recalculateSummary();
   }
 
   void _recalculateSummary() {
@@ -640,6 +735,7 @@ class TransactionController extends GetxController {
 
   @override
   void onClose() {
+    scrollController.dispose();
     searchController.dispose();
     super.onClose();
   }
