@@ -138,30 +138,36 @@ class TransactionCard extends StatelessWidget {
                       Row(
                         children: [
                           if (transaction.category != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                color: catColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    catIcon,
-                                    size: 11,
-                                    color: catColor,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    transaction.category!.name,
-                                    style: TextStyle(
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: catColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      catIcon,
+                                      size: 11,
                                       color: catColor,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        transaction.category!.name,
+                                        style: TextStyle(
+                                          color: catColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -173,36 +179,6 @@ class TransactionCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
-                          if (transaction.linkedIncomeDescription != null && transaction.linkedIncomeDescription!.isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.income.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.link_rounded, size: 10, color: AppColors.income),
-                                  const SizedBox(width: 3),
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 90),
-                                    child: Text(
-                                      transaction.linkedIncomeDescription!,
-                                      style: const TextStyle(
-                                        color: AppColors.income,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                           if (transaction.isPendingSync) ...[
                             const SizedBox(width: 6),
                             Container(
@@ -234,6 +210,7 @@ class TransactionCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
 
                 // Amount
                 Text(
