@@ -48,6 +48,7 @@ class TransactionController extends GetxController {
   final balance = 0.0.obs;
 
   // Pagination & Infinite Scroll
+  final currentPage = 1.obs;
   final nextCursor = Rxn<String>();
   final hasMore = true.obs;
   final isLoadingMore = false.obs;
@@ -209,6 +210,7 @@ class TransactionController extends GetxController {
     try {
       if (isRefresh) {
         isLoading.value = true;
+        currentPage.value = 1;
         nextCursor.value = null;
         hasMore.value = true;
       }
@@ -230,9 +232,11 @@ class TransactionController extends GetxController {
         sort: selectedSort.value,
         year: filterYear.value,
         month: filterMonth.value,
+        page: 1,
         limit: 20,
       );
 
+      currentPage.value = 1;
       nextCursor.value = res.nextCursor;
       hasMore.value = res.hasMore;
 
@@ -272,12 +276,13 @@ class TransactionController extends GetxController {
   }
 
   Future<void> loadMoreTransactions() async {
-    if (isLoading.value || isLoadingMore.value || !hasMore.value || nextCursor.value == null) {
+    if (isLoading.value || isLoadingMore.value || !hasMore.value) {
       return;
     }
 
     try {
       isLoadingMore.value = true;
+      final nextPage = currentPage.value + 1;
       final res = await repository.getTransactionsPaginated(
         view: selectedView.value,
         type: selectedType.value.isNotEmpty ? selectedType.value : null,
@@ -288,10 +293,11 @@ class TransactionController extends GetxController {
         sort: selectedSort.value,
         year: filterYear.value,
         month: filterMonth.value,
-        cursor: nextCursor.value,
+        page: nextPage,
         limit: 20,
       );
 
+      currentPage.value = nextPage;
       nextCursor.value = res.nextCursor;
       hasMore.value = res.hasMore;
 

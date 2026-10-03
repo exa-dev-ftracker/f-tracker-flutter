@@ -4,13 +4,21 @@ import '../models/transaction_model.dart';
 
 class PaginatedTransactionsResponse {
   final List<TransactionModel> items;
-  final String? nextCursor;
+  final int page;
+  final int limit;
+  final int total;
+  final int totalPages;
   final bool hasMore;
+  final String? nextCursor;
 
   PaginatedTransactionsResponse({
     required this.items,
-    this.nextCursor,
+    this.page = 1,
+    this.limit = 20,
+    this.total = 0,
+    this.totalPages = 1,
     this.hasMore = false,
+    this.nextCursor,
   });
 }
 
@@ -27,8 +35,10 @@ class TransactionRepository {
     String? sort,
     int? year,
     int? month,
-    String? cursor,
+    int page = 1,
     int limit = 20,
+    int? offset,
+    String? cursor,
   }) async {
     final query = <String, dynamic>{};
     if (view != null && view.isNotEmpty) query['view'] = view;
@@ -38,8 +48,13 @@ class TransactionRepository {
     if (sort != null && sort.isNotEmpty) query['sort'] = sort;
     if (year != null) query['year'] = year.toString();
     if (month != null) query['month'] = month.toString();
-    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+    if (offset != null) {
+      query['offset'] = offset.toString();
+    } else {
+      query['page'] = page.toString();
+    }
     query['limit'] = limit.toString();
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
 
     final response = await apiClient.get(
       ApiEndpoints.transactions,
@@ -50,6 +65,10 @@ class TransactionRepository {
     List list = [];
     String? nextCursor;
     bool hasMore = false;
+    int respPage = page;
+    int respLimit = limit;
+    int respTotal = 0;
+    int respTotalPages = 1;
 
     if (data is Map && data['data'] != null) {
       final d = data['data'];
@@ -58,14 +77,22 @@ class TransactionRepository {
           list = d['items'];
         }
         if (d['pagination'] is Map) {
-          nextCursor = d['pagination']['nextCursor'];
           hasMore = d['pagination']['hasMore'] == true;
+          respPage = (d['pagination']['page'] as num?)?.toInt() ?? page;
+          respLimit = (d['pagination']['limit'] as num?)?.toInt() ?? limit;
+          respTotal = (d['pagination']['total'] as num?)?.toInt() ?? 0;
+          respTotalPages = (d['pagination']['totalPages'] as num?)?.toInt() ?? 1;
+          nextCursor = d['pagination']['nextCursor'];
+        } else {
+          hasMore = list.length >= limit;
         }
       } else if (d is List) {
         list = d;
+        hasMore = list.length >= limit;
       }
     } else if (data is List) {
       list = data;
+      hasMore = list.length >= limit;
     }
 
     final items = list
@@ -74,8 +101,12 @@ class TransactionRepository {
 
     return PaginatedTransactionsResponse(
       items: items,
-      nextCursor: nextCursor,
+      page: respPage,
+      limit: respLimit,
+      total: respTotal,
+      totalPages: respTotalPages,
       hasMore: hasMore,
+      nextCursor: nextCursor,
     );
   }
 
@@ -87,8 +118,10 @@ class TransactionRepository {
     String? sort,
     int? year,
     int? month,
-    String? cursor,
+    int page = 1,
     int? limit,
+    int? offset,
+    String? cursor,
   }) async {
     final res = await getTransactionsPaginated(
       view: view,
@@ -98,8 +131,10 @@ class TransactionRepository {
       sort: sort,
       year: year,
       month: month,
-      cursor: cursor,
+      page: page,
       limit: limit ?? 20,
+      offset: offset,
+      cursor: cursor,
     );
     return res.items;
   }
