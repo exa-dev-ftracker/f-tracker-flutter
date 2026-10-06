@@ -153,6 +153,34 @@ class TransactionRepository {
     return TransactionModel.fromJson(Map<String, dynamic>.from(item));
   }
 
+  Future<TransactionModel> getTransactionDetail(String id) async {
+    final response = await apiClient.get(ApiEndpoints.transactionDetail(id));
+    final data = response.data;
+    final item = data is Map && data['data'] != null ? data['data'] : data;
+    return TransactionModel.fromJson(Map<String, dynamic>.from(item));
+  }
+
+  Future<List<TransactionModel>> fetchAllTransactions() async {
+    final allItems = <TransactionModel>[];
+    int page = 1;
+    bool hasMore = true;
+
+    while (hasMore) {
+      final res = await getTransactionsPaginated(
+        view: 'All',
+        page: page,
+        limit: 100,
+      );
+      allItems.addAll(res.items);
+      if (!res.hasMore || res.items.isEmpty) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
+    return allItems;
+  }
+
   Future<bool> deleteTransaction(String id) async {
     final response = await apiClient.delete(ApiEndpoints.transactionDetail(id));
     return response.statusCode == 200;

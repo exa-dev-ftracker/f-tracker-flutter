@@ -106,24 +106,20 @@ class CurrencyFormatter {
 
     DateTime calendarDate;
     if (txDate is DateTime) {
-      calendarDate = txDate;
+      calendarDate = DateTime(txDate.year, txDate.month, txDate.day);
     } else if (txDate.toString().isNotEmpty) {
       final str = txDate.toString().trim();
-      if (str.contains('T') || str.endsWith('Z')) {
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        // Fixed calendar date: do NOT convert via timezone
+        calendarDate = DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+        );
+      } else {
         final parsed = toUserTimezone(str, timezone);
         calendarDate = DateTime(parsed.year, parsed.month, parsed.day);
-      } else {
-        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-        if (match != null) {
-          calendarDate = DateTime(
-            int.parse(match.group(1)!),
-            int.parse(match.group(2)!),
-            int.parse(match.group(3)!),
-          );
-        } else {
-          final parsed = toUserTimezone(str, timezone);
-          calendarDate = DateTime(parsed.year, parsed.month, parsed.day);
-        }
       }
     } else {
       calendarDate = DateTime.now();
@@ -158,18 +154,18 @@ class CurrencyFormatter {
     if (date == null) return '';
     DateTime dt;
     if (date is DateTime) {
-      dt = date;
+      dt = DateTime(date.year, date.month, date.day);
     } else {
       final str = date.toString().trim();
-      if (str.contains('T') || str.endsWith('Z')) {
-        dt = toUserTimezone(str, timezone);
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        dt = DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+        );
       } else {
-        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-        if (match != null) {
-          dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
-        } else {
-          dt = toUserTimezone(str, timezone);
-        }
+        dt = toUserTimezone(str, timezone);
       }
     }
     return DateFormat('d MMM', 'en_US').format(dt);
@@ -179,18 +175,18 @@ class CurrencyFormatter {
     if (date == null) return '';
     DateTime dt;
     if (date is DateTime) {
-      dt = date;
+      dt = DateTime(date.year, date.month, date.day);
     } else {
       final str = date.toString().trim();
-      if (str.contains('T') || str.endsWith('Z')) {
-        dt = toUserTimezone(str, timezone);
+      final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
+      if (match != null) {
+        dt = DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+        );
       } else {
-        final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-        if (match != null) {
-          dt = DateTime(int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!));
-        } else {
-          dt = toUserTimezone(str, timezone);
-        }
+        dt = toUserTimezone(str, timezone);
       }
     }
     return DateFormat('EEE, d MMM yyyy', 'en_US').format(dt);

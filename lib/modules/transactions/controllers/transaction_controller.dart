@@ -54,6 +54,10 @@ class TransactionController extends GetxController {
   final isLoadingMore = false.obs;
   final scrollController = ScrollController();
 
+  // Selected Detail Transaction (for bottom sheet)
+  final selectedDetailTx = Rxn<TransactionModel>();
+  final isLoadingDetail = false.obs;
+
   SyncService get syncService => Get.find<SyncService>();
 
   List<CategoryModel> get availableCategories {
@@ -183,11 +187,11 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<void> fetchFullHistory() async {
+  Future<void> fetchFullHistory({bool force = false}) async {
     if (!syncService.isOnline.value) return;
     try {
-      final allResult = await repository.getTransactions(view: 'All', limit: 100);
-      final existingCached = storageService.cachedTransactions;
+      final allResult = await repository.fetchAllTransactions();
+      final existingCached = force ? <dynamic>[] : storageService.cachedTransactions;
       final cachedMap = <String, Map<String, dynamic>>{};
       for (final item in existingCached) {
         final id = item['id']?.toString() ?? item['_id']?.toString();
@@ -444,19 +448,218 @@ class TransactionController extends GetxController {
     }
   }
 
+  Map<String, List<TransactionModel>> get groupedTransactions {
+    final groups = <String, List<TransactionModel>>{};
+    for (final t in transactions) {
+      final key = '${t.date.year.toString().padLeft(4, '0')}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
+      groups.putIfAbsent(key, () => []).add(t);
+    }
+    return groups;
+  }
+
+  Map<String, double> getDailySummary(List<TransactionModel> dailyTxs) {
+    double inc = 0.0;
+    double exp = 0.0;
+    for (final t in dailyTxs) {
+      if (t.isIncome) {
+        inc += t.amount;
+      } else {
+        exp += t.amount;
+      }
+    }
+    return {
+      'income': inc,
+      'expense': exp,
+      'net': inc - exp,
+    };
+  }
+
+  void _upsertCachedTransaction(TransactionModel tx) {
+    final cached = storageService.cachedTransactions;
+    final map = <String, Map<String, dynamic>>{};
+    for (final item in cached) {
+      final id = item['id']?.toString() ?? item['_id']?.toString();
+      if (id != null) map[id] = Map<String, dynamic>.from(item);
+    }
+    map[tx.id] = tx.toJson();
+    storageService.saveCachedTransactions(map.values.toList());
+  }
+
+  void _removeCachedTransaction(String id) {
+    final cached = storageService.cachedTransactions;
+    final updated = cached.where((item) {
+      final itemId = item['id']?.toString() ?? item['_id']?.toString();
+      return itemId != id;
+    }).toList();
+    storageService.saveCachedTransactions(updated);
+  }
+
+  void _adjustParentIncomeBalance(String? parentIncomeId, double expenseDiff) {
+    if (parentIncomeId == null || parentIncomeId.isEmpty) return;
+    final cached = List<dynamic>.from(storageService.cachedTransactions);
+    for (int i = 0; i < cached.length; i++) {
+      final item = Map<String, dynamic>.from(cached[i]);
+      final id = item['id']?.toString() ?? item['_id']?.toString();
+      if (id == parentIncomeId) {
+        final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+        final currentUsed = (item['totalUsed'] as num?)?.toDouble() ?? 0.0;
+        final newUsed = (currentUsed + expenseDiff).clamp(0.0, double.infinity);
+        final newRemaining = amount - newUsed;
+        final newPct = amount > 0 ? (newUsed / amount) * 100 : 0.0;
+        item['totalUsed'] = newUsed;
+        item['remainingAmount'] = newRemaining;
+        item['percentageUsed'] = newPct;
+        cached[i] = item;
+        storageService.saveCachedTransactions(cached);
+
+        final memIdx = transactions.indexWhere((t) => t.id == parentIncomeId);
+        if (memIdx != -1) {
+          transactions[memIdx] = transactions[memIdx].copyWith(
+            totalUsed: newUsed,
+            remainingAmount: newRemaining,
+            percentageUsed: newPct,
+          );
+          transactions.refresh();
+        }
+        break;
+      }
+    }
+  }
+
+  Future<TransactionModel?> getTransactionDetail(String id) async {
+    if (syncService.isOnline.value && !id.startsWith('temp_')) {
+      try {
+        final detail = await repository.getTransactionDetail(id);
+        _upsertCachedTransaction(detail);
+        return detail;
+      } catch (e) {
+        LoggerService.w('Online fetch transaction detail failed, fallback to cache: $e', tag: 'TransactionController');
+      }
+    }
+
+    // Offline / fallback from local cache
+    final cached = storageService.cachedTransactions;
+    final allTxs = cached
+        .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    final match = allTxs.firstWhereOrNull((t) => t.id == id);
+    if (match == null) return null;
+
+    if (match.isIncome) {
+      final linkedExps = allTxs.where((t) => !t.isIncome && t.linkedIncomeId == match.id).toList();
+      linkedExps.sort((a, b) => b.date.compareTo(a.date));
+      final totalUsed = linkedExps.fold<double>(0.0, (sum, e) => sum + e.amount);
+      final remaining = match.amount - totalUsed;
+      final pct = match.amount > 0 ? (totalUsed / match.amount) * 100 : 0.0;
+      return match.copyWith(
+        linkedExpenses: linkedExps,
+        totalUsed: totalUsed,
+        remainingAmount: remaining,
+        percentageUsed: pct,
+        expenseCount: linkedExps.length,
+      );
+    } else if (match.linkedIncomeId != null) {
+      final parent = allTxs.firstWhereOrNull((t) => t.id == match.linkedIncomeId);
+      if (parent != null) {
+        final siblingExps = allTxs.where((t) => !t.isIncome && t.linkedIncomeId == parent.id).toList();
+        final totalUsed = siblingExps.fold<double>(0.0, (sum, e) => sum + e.amount);
+        final remaining = parent.amount - totalUsed;
+        final pct = parent.amount > 0 ? (totalUsed / parent.amount) * 100 : 0.0;
+        return match.copyWith(
+          linkedIncomeDescription: parent.description,
+          linkedIncomeDetails: {
+            '_id': parent.id,
+            'description': parent.description,
+            'amount': parent.amount,
+            'date': parent.date.toIso8601String(),
+            'totalUsed': totalUsed,
+            'remainingAmount': remaining,
+            'expenseCount': siblingExps.length,
+            'percentageUsed': pct,
+          },
+        );
+      }
+    }
+    return match;
+  }
+
+  Future<void> loadTransactionDetail(TransactionModel tx) async {
+    selectedDetailTx.value = tx;
+    isLoadingDetail.value = true;
+    try {
+      final detail = await getTransactionDetail(tx.id);
+      if (detail != null) {
+        selectedDetailTx.value = detail;
+      }
+    } catch (e) {
+      LoggerService.e('Failed to load transaction detail: $e', tag: 'TransactionController');
+    } finally {
+      isLoadingDetail.value = false;
+    }
+  }
+
   Future<Map<String, dynamic>> getAvailableIncomes({
     int page = 1,
     int limit = 10,
     String? search,
   }) async {
+    if (syncService.isOnline.value) {
+      try {
+        final res = await repository.getAvailableIncomes(
+          page: page,
+          limit: limit,
+          search: search,
+        );
+        return res;
+      } catch (e) {
+        LoggerService.w('Online fetch available incomes failed, fallback to cache: $e', tag: 'TransactionController');
+      }
+    }
+
+    // Offline fallback from local cached transactions
     try {
-      return await repository.getAvailableIncomes(
-        page: page,
-        limit: limit,
-        search: search,
-      );
+      final cached = storageService.cachedTransactions;
+      final allTxs = cached
+          .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      final incomes = allTxs.where((t) => t.isIncome).toList();
+      final q = (search ?? '').trim().toLowerCase();
+
+      final available = <TransactionModel>[];
+      for (final inc in incomes) {
+        if (q.isNotEmpty && !inc.description.toLowerCase().contains(q)) {
+          continue;
+        }
+
+        final linkedExps = allTxs.where((t) => !t.isIncome && t.linkedIncomeId == inc.id);
+        final computedUsed = linkedExps.fold<double>(0.0, (sum, e) => sum + e.amount);
+        final remaining = inc.amount - computedUsed;
+
+        if (remaining > 0) {
+          available.add(inc.copyWith(
+            remainingAmount: remaining,
+            totalUsed: computedUsed,
+            percentageUsed: inc.amount > 0 ? (computedUsed / inc.amount) * 100 : 0.0,
+            expenseCount: linkedExps.length,
+          ));
+        }
+      }
+
+      available.sort((a, b) => b.date.compareTo(a.date));
+
+      final startIndex = (page - 1) * limit;
+      final pagedList = available.skip(startIndex).take(limit).toList();
+      final hasMore = startIndex + limit < available.length;
+
+      return {
+        'incomes': pagedList,
+        'hasMore': hasMore,
+        'total': available.length,
+      };
     } catch (e) {
-      LoggerService.e('Failed to fetch available incomes: $e', tag: 'TransactionController');
+      LoggerService.e('Offline available incomes calculation failed: $e', tag: 'TransactionController');
       return {'incomes': <TransactionModel>[], 'hasMore': false, 'total': 0};
     }
   }
@@ -504,9 +707,10 @@ class TransactionController extends GetxController {
     // Optimistic insert
     transactions.insert(0, localTx);
     _recalculateSummary();
-    storageService.saveCachedTransactions(
-      transactions.map((e) => e.toJson()).toList(),
-    );
+    _upsertCachedTransaction(localTx);
+    if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) {
+      _adjustParentIncomeBalance(linkedIncomeId, amount);
+    }
 
     // 3. If device is offline, enqueue sync task directly
     if (!syncService.isOnline.value) {
@@ -516,6 +720,7 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
+        linkedIncomeId: linkedIncomeId,
         date: calendarDate,
         createdAt: now,
       );
@@ -543,9 +748,9 @@ class TransactionController extends GetxController {
         transactions[index] = newTx.copyWith(isPendingSync: false);
         transactions.refresh();
       }
-      storageService.saveCachedTransactions(
-        transactions.map((e) => e.toJson()).toList(),
-      );
+      _removeCachedTransaction(tempId);
+      _upsertCachedTransaction(newTx.copyWith(isPendingSync: false));
+
       SnackbarService.success('Transaction recorded successfully!');
       notifyGlobalStateChange();
       return true;
@@ -561,6 +766,7 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
+        linkedIncomeId: linkedIncomeId,
         date: calendarDate,
         createdAt: now,
       );
@@ -583,6 +789,8 @@ class TransactionController extends GetxController {
     final idx = transactions.indexWhere((t) => t.id == id);
     if (idx == -1) return false;
 
+    final oldTx = transactions[idx];
+
     // Locate category for local display
     CategoryModel? selectedCat;
     if (categoryId != null && categoryId.isNotEmpty) {
@@ -599,7 +807,7 @@ class TransactionController extends GetxController {
     final calendarDate = DateTime(txDate.year, txDate.month, txDate.day);
 
     // Optimistic update
-    transactions[idx] = transactions[idx].copyWith(
+    final updatedLocal = transactions[idx].copyWith(
       amount: amount,
       type: type,
       description: description,
@@ -607,11 +815,19 @@ class TransactionController extends GetxController {
       date: calendarDate,
       linkedIncomeId: linkedIncomeId,
     );
+    transactions[idx] = updatedLocal;
     transactions.refresh();
     _recalculateSummary();
-    storageService.saveCachedTransactions(
-      transactions.map((e) => e.toJson()).toList(),
-    );
+    _upsertCachedTransaction(updatedLocal);
+
+    // Adjust parent income balance
+    if (oldTx.linkedIncomeId != null && oldTx.linkedIncomeId != linkedIncomeId) {
+      _adjustParentIncomeBalance(oldTx.linkedIncomeId, -oldTx.amount);
+    }
+    if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) {
+      final diff = (oldTx.linkedIncomeId == linkedIncomeId) ? (amount - oldTx.amount) : amount;
+      _adjustParentIncomeBalance(linkedIncomeId, diff);
+    }
 
     // If offline or temp item, enqueue
     if (!syncService.isOnline.value || id.startsWith('temp_')) {
@@ -621,6 +837,7 @@ class TransactionController extends GetxController {
         type: type,
         description: description,
         categoryId: categoryId,
+        linkedIncomeId: linkedIncomeId,
         date: calendarDate,
       );
       AppHaptics.success();
@@ -646,9 +863,7 @@ class TransactionController extends GetxController {
         transactions[newIdx] = updatedTx.copyWith(isPendingSync: false);
         transactions.refresh();
       }
-      storageService.saveCachedTransactions(
-        transactions.map((e) => e.toJson()).toList(),
-      );
+      _upsertCachedTransaction(updatedTx.copyWith(isPendingSync: false));
       SnackbarService.success('Transaction updated successfully!');
       notifyGlobalStateChange();
       return true;
@@ -660,6 +875,7 @@ class TransactionController extends GetxController {
           type: type,
           description: description,
           categoryId: categoryId,
+          linkedIncomeId: linkedIncomeId,
           date: calendarDate,
         );
         SnackbarService.success('Transaction updated successfully!');
@@ -669,9 +885,7 @@ class TransactionController extends GetxController {
       // Rollback on server validation error
       transactions.assignAll(oldTransactions);
       _recalculateSummary();
-      storageService.saveCachedTransactions(
-        transactions.map((e) => e.toJson()).toList(),
-      );
+      _upsertCachedTransaction(oldTx);
       AppErrorHandler.handle(e, fallback: 'Failed to update transaction');
       return false;
     }
@@ -685,9 +899,10 @@ class TransactionController extends GetxController {
       await syncService.removePendingCreate(tx.id);
       transactions.removeWhere((t) => t.id == tx.id);
       _recalculateSummary();
-      storageService.saveCachedTransactions(
-        transactions.map((e) => e.toJson()).toList(),
-      );
+      _removeCachedTransaction(tx.id);
+      if (tx.linkedIncomeId != null) {
+        _adjustParentIncomeBalance(tx.linkedIncomeId, -tx.amount);
+      }
       SnackbarService.success('Transaction deleted successfully');
       notifyGlobalStateChange();
       return true;
@@ -697,9 +912,10 @@ class TransactionController extends GetxController {
     final previousList = List<TransactionModel>.from(transactions);
     transactions.removeWhere((t) => t.id == tx.id);
     _recalculateSummary();
-    storageService.saveCachedTransactions(
-      transactions.map((e) => e.toJson()).toList(),
-    );
+    _removeCachedTransaction(tx.id);
+    if (tx.linkedIncomeId != null) {
+      _adjustParentIncomeBalance(tx.linkedIncomeId, -tx.amount);
+    }
 
     // 3. If offline, enqueue delete task
     if (!syncService.isOnline.value) {
@@ -720,6 +936,10 @@ class TransactionController extends GetxController {
         // Rollback
         transactions.assignAll(previousList);
         _recalculateSummary();
+        _upsertCachedTransaction(tx);
+        if (tx.linkedIncomeId != null) {
+          _adjustParentIncomeBalance(tx.linkedIncomeId, tx.amount);
+        }
         AppErrorHandler.handle(
           Exception('Server rejected delete'),
           fallback: 'Failed to delete transaction',

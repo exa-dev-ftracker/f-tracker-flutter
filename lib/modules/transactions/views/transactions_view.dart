@@ -10,6 +10,7 @@ import '../../navigation/controllers/navigation_controller.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/storage_service.dart';
 import '../controllers/transaction_controller.dart';
+import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'widgets/transaction_card.dart';
 
@@ -290,14 +291,16 @@ class TransactionsView extends StatelessWidget {
                   );
                 }
 
-                return ListView.separated(
+                final grouped = controller.groupedTransactions;
+                final dateKeys = grouped.keys.toList();
+
+                return ListView.builder(
                   controller: controller.scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  itemCount: controller.transactions.length + (controller.isLoadingMore.value ? 1 : 0),
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemCount: dateKeys.length + (controller.isLoadingMore.value ? 1 : 0),
                   itemBuilder: (context, index) {
-                    if (index == controller.transactions.length) {
+                    if (index == dateKeys.length) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Center(
@@ -309,10 +312,25 @@ class TransactionsView extends StatelessWidget {
                         ),
                       );
                     }
-                    final tx = controller.transactions[index];
-                    return TransactionCard(
-                      transaction: tx,
-                      onDelete: () => controller.deleteTransaction(tx),
+
+                    final dateKey = dateKeys[index];
+                    final dailyTxs = grouped[dateKey] ?? [];
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildDailySectionHeader(dateKey, dailyTxs),
+                          ...dailyTxs.map((tx) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: TransactionCard(
+                                  transaction: tx,
+                                  onDelete: () => controller.deleteTransaction(tx),
+                                ),
+                              )),
+                        ],
+                      ),
                     );
                   },
                 );
@@ -322,6 +340,113 @@ class TransactionsView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildDailySectionHeader(String dateKey, List<TransactionModel> dailyTxs) {
+    final summary = controller.getDailySummary(dailyTxs);
+    final net = summary['net'] ?? 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, top: 4, left: 2, right: 2),
+      child: Row(
+        children: [
+          // Blue Accent Bar
+          Container(
+            width: 3.5,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Date title
+          Text(
+            _formatDateHeading(dateKey),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Count badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '${dailyTxs.length}',
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Spacer(),
+          // Daily Summary Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+            decoration: BoxDecoration(
+              color: (net >= 0 ? AppColors.income : AppColors.expense).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: (net >= 0 ? AppColors.income : AppColors.expense).withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Net: ',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${net >= 0 ? "+" : "-"}${CurrencyFormatter.format(net.abs())}',
+                  style: TextStyle(
+                    color: net >= 0 ? AppColors.income : AppColors.expense,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateHeading(String dateKey) {
+    try {
+      final parts = dateKey.split('-').map(int.parse).toList();
+      if (parts.length == 3) {
+        final date = DateTime(parts[0], parts[1], parts[2]);
+        final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
+        final userTz = storage?.user?['timezone']?.toString();
+        final now = CurrencyFormatter.nowInTimezone(userTz);
+        final today = DateTime(now.year, now.month, now.day);
+        final yesterday = today.subtract(const Duration(days: 1));
+
+        if (date == today) {
+          return 'Today';
+        } else if (date == yesterday) {
+          return 'Yesterday';
+        } else {
+          return CurrencyFormatter.formatDisplayDate(date);
+        }
+      }
+    } catch (_) {}
+    return dateKey;
   }
 
   Widget _buildViewChip(String label, bool isSelected) {

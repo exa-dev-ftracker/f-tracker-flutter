@@ -287,7 +287,11 @@ class EditTransactionView extends StatelessWidget {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              linkedTitle ?? 'General Balance (No link)',
+                                              linkedId != null
+                                                  ? (controller.selectedLinkedIncomeDate.value != null
+                                                      ? '$linkedTitle (${CurrencyFormatter.formatShortDate(controller.selectedLinkedIncomeDate.value)})'
+                                                      : (linkedTitle ?? 'Linked Income'))
+                                                  : 'General Balance (No link)',
                                               style: TextStyle(
                                                 color: linkedId != null ? AppColors.income : AppColors.textSecondary,
                                                 fontSize: 13,
@@ -566,9 +570,33 @@ class EditTransactionView extends StatelessWidget {
                                 ),
                                 child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.income, size: 20),
                               ),
-                              title: Text(
-                                inc.description,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      inc.description,
+                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceVariant,
+                                      borderRadius: BorderRadius.circular(5),
+                                    ),
+                                    child: Text(
+                                      CurrencyFormatter.formatTransactionDate(inc.date),
+                                      style: const TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

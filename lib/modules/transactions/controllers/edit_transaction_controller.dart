@@ -42,6 +42,7 @@ class EditTransactionController extends GetxController {
   final selectedCategoryId = RxnString();
   final selectedLinkedIncomeId = RxnString();
   final selectedLinkedIncomeTitle = RxnString();
+  final selectedLinkedIncomeDate = Rxn<DateTime>();
   final availableIncomes = <TransactionModel>[].obs;
   final isLoadingIncomes = false.obs;
   final isLoadingMoreIncomes = false.obs;
@@ -64,6 +65,7 @@ class EditTransactionController extends GetxController {
     selectedCategoryId.value = originalTransaction.category?.id;
     selectedLinkedIncomeId.value = originalTransaction.linkedIncomeId;
     selectedLinkedIncomeTitle.value = originalTransaction.linkedIncomeDescription;
+    selectedLinkedIncomeDate.value = originalTransaction.linkedIncomeDate;
     selectedDate.value = originalTransaction.date;
     descController.text = originalTransaction.description;
     loadAvailableIncomes(reset: true);
@@ -111,11 +113,16 @@ class EditTransactionController extends GetxController {
       }
       hasMoreIncomes.value = more;
 
-      // If we have a linkedIncomeId and missing title, try to populate title from list
-      if (selectedLinkedIncomeId.value != null && selectedLinkedIncomeTitle.value == null) {
+      // If we have a linkedIncomeId, try to populate missing title and date from list
+      if (selectedLinkedIncomeId.value != null) {
         final match = availableIncomes.firstWhereOrNull((t) => t.id == selectedLinkedIncomeId.value);
         if (match != null) {
-          selectedLinkedIncomeTitle.value = match.description;
+          if (selectedLinkedIncomeTitle.value == null) {
+            selectedLinkedIncomeTitle.value = match.description;
+          }
+          if (selectedLinkedIncomeDate.value == null) {
+            selectedLinkedIncomeDate.value = match.date;
+          }
         }
       }
     } finally {
@@ -140,9 +147,11 @@ class EditTransactionController extends GetxController {
     if (income == null) {
       selectedLinkedIncomeId.value = null;
       selectedLinkedIncomeTitle.value = null;
+      selectedLinkedIncomeDate.value = null;
     } else {
       selectedLinkedIncomeId.value = income.id;
       selectedLinkedIncomeTitle.value = income.description;
+      selectedLinkedIncomeDate.value = income.date;
     }
   }
 

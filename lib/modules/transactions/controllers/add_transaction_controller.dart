@@ -48,6 +48,7 @@ class AddTransactionController extends GetxController {
   final selectedCategoryId = RxnString();
   final selectedLinkedIncomeId = RxnString();
   final selectedLinkedIncomeTitle = RxnString();
+  final selectedLinkedIncomeDate = Rxn<DateTime>();
   final availableIncomes = <TransactionModel>[].obs;
   final isLoadingIncomes = false.obs;
   final isLoadingMoreIncomes = false.obs;
@@ -130,9 +131,11 @@ class AddTransactionController extends GetxController {
     if (income == null) {
       selectedLinkedIncomeId.value = null;
       selectedLinkedIncomeTitle.value = null;
+      selectedLinkedIncomeDate.value = null;
     } else {
       selectedLinkedIncomeId.value = income.id;
       selectedLinkedIncomeTitle.value = income.description;
+      selectedLinkedIncomeDate.value = income.date;
     }
   }
 
@@ -219,6 +222,7 @@ class AddTransactionController extends GetxController {
     selectedCategoryId.value = null;
     selectedLinkedIncomeId.value = null;
     selectedLinkedIncomeTitle.value = null;
+    selectedLinkedIncomeDate.value = null;
     selectedType.value = 'Expense';
     final storage = Get.isRegistered<StorageService>() ? Get.find<StorageService>() : null;
     final userTz = storage?.user?['timezone']?.toString();
