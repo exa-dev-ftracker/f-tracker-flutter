@@ -136,6 +136,7 @@ class SyncService extends GetxService {
     required String type,
     required String description,
     String? categoryId,
+    String? linkedIncomeId,
     DateTime? date,
     required DateTime createdAt,
   }) async {
@@ -148,8 +149,9 @@ class SyncService extends GetxService {
         'type': type,
         'description': description,
         if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
+        if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) 'linkedIncomeId': linkedIncomeId,
         'date': date != null
-            ? DateTime.utc(date.year, date.month, date.day).toIso8601String()
+            ? '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}T00:00:00.000Z'
             : createdAt.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
       },
@@ -221,6 +223,7 @@ class SyncService extends GetxService {
     required String type,
     required String description,
     String? categoryId,
+    String? linkedIncomeId,
     DateTime? date,
   }) async {
     final payloadData = {
@@ -228,7 +231,9 @@ class SyncService extends GetxService {
       'type': type,
       'description': description,
       if (categoryId != null && categoryId.isNotEmpty) 'category': categoryId,
-      if (date != null) 'date': date.toIso8601String(),
+      if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) 'linkedIncomeId': linkedIncomeId,
+      if (date != null)
+        'date': '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}T00:00:00.000Z',
     };
 
     final queue = List<Map<String, dynamic>>.from(
@@ -404,6 +409,8 @@ class SyncService extends GetxService {
         'type': payload['type'],
         'description': payload['description'],
         if (payload['category'] != null) 'category': payload['category'],
+        if (payload['linkedIncomeId'] != null && payload['linkedIncomeId'].toString().isNotEmpty)
+          'linkedIncomeId': payload['linkedIncomeId'],
         'date': payload['date'] ?? payload['createdAt'],
       },
       options: Options(extra: {'silent': true}),
@@ -495,6 +502,20 @@ class SyncService extends GetxService {
     );
   }
 
+  Future<void> _syncCategoriesEagerly() async {
+    try {
+      final response = await apiClient.get(
+        ApiEndpoints.categories,
+        options: Options(extra: {'silent': true}),
+      );
+      final data = response.data;
+      final list = (data is Map && data['data'] != null ? data['data'] : data) as List? ?? [];
+      await storageService.saveCachedCategories(list);
+    } catch (e) {
+      LoggerService.w('Eager category sync deferred: $e', tag: 'SyncService');
+    }
+  }
+
   void _refreshActiveControllers() {
     if (Get.isRegistered<TransactionController>()) {
       try {
@@ -534,6 +555,7 @@ class SyncService extends GetxService {
     }
 
     await processQueue();
+    await _syncCategoriesEagerly();
     _refreshActiveControllers();
 
     if (pendingCount.value == 0) {
@@ -541,6 +563,59 @@ class SyncService extends GetxService {
       lastSyncedAt.value = now;
       await storageService.saveLastSyncedAt(now);
       SnackbarService.success('Data is synchronized with the cloud server.');
+    }
+  }
+
+  // --- Complete Cloud Resync Trigger ---
+
+  Future<void> fullResync() async {
+    if (!isOnline.value) {
+      SnackbarService.warning('Device is offline. Connect to Wi-Fi or cellular data to re-sync.');
+      return;
+    }
+
+    if (isSyncing.value) {
+      SnackbarService.info('Sync process is already in progress...');
+      return;
+    }
+
+    try {
+      isSyncing.value = true;
+      SnackbarService.info('Re-syncing complete database from cloud...');
+
+      // 1. Process any pending offline tasks first
+      await processQueue();
+
+      // 2. Eagerly refresh all categories
+      await _syncCategoriesEagerly();
+
+      // 3. Eagerly fetch 100% of transaction history
+      if (Get.isRegistered<TransactionController>()) {
+        final txCtrl = Get.find<TransactionController>();
+        await txCtrl.fetchFullHistory(force: true);
+        await txCtrl.fetchTransactions();
+      }
+
+      // 4. Refresh other active controllers
+      if (Get.isRegistered<DashboardController>()) {
+        Get.find<DashboardController>().fetchDashboard();
+      }
+      if (Get.isRegistered<AnalyticsController>()) {
+        Get.find<AnalyticsController>().fetchAnalytics();
+      }
+      if (Get.isRegistered<CategoryController>()) {
+        Get.find<CategoryController>().fetchCategories();
+      }
+
+      final now = DateTime.now();
+      lastSyncedAt.value = now;
+      await storageService.saveLastSyncedAt(now);
+      SnackbarService.success('Complete database re-synced successfully!');
+    } catch (e) {
+      LoggerService.e('Full resync failed: $e', tag: 'SyncService');
+      SnackbarService.error('Failed to complete re-sync: $e');
+    } finally {
+      isSyncing.value = false;
     }
   }
 

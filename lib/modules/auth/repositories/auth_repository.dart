@@ -9,21 +9,24 @@ class AuthRepository {
   AuthRepository({required this.apiClient});
 
   Future<AuthResponseModel> login(String email, String password) async {
-    final response = await apiClient.post(ApiEndpoints.login, data: {
-      'email': email,
-      'password': password,
-    });
+    final response = await apiClient.post(
+      ApiEndpoints.login,
+      data: {'email': email, 'password': password},
+    );
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
   }
 
-  Future<AuthResponseModel> register(String name, String email, String password) async {
-    final response = await apiClient.post(ApiEndpoints.register, data: {
-      'name': name,
-      'email': email,
-      'password': password,
-    });
+  Future<AuthResponseModel> register(
+    String name,
+    String email,
+    String password,
+  ) async {
+    final response = await apiClient.post(
+      ApiEndpoints.register,
+      data: {'name': name, 'email': email, 'password': password},
+    );
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
@@ -36,12 +39,18 @@ class AuthRepository {
     return UserModel.fromJson(Map<String, dynamic>.from(item));
   }
 
-  Future<AuthResponseModel> loginWithGoogle({String? code, String? credential}) async {
+  Future<AuthResponseModel> loginWithGoogle({
+    String? code,
+    String? credential,
+  }) async {
     final payload = <String, dynamic>{};
     if (code != null) payload['code'] = code;
     if (credential != null) payload['credential'] = credential;
 
-    final response = await apiClient.post(ApiEndpoints.googleAuth, data: payload);
+    final response = await apiClient.post(
+      ApiEndpoints.googleAuth,
+      data: payload,
+    );
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
@@ -54,13 +63,16 @@ class AuthRepository {
     String? email,
     String? name,
   }) async {
-    final response = await apiClient.post(ApiEndpoints.appleAuth, data: {
-      'code': code,
-      'identityToken': identityToken,
-      'userIdentifier': userIdentifier,
-      'email': email,
-      'name': name,
-    });
+    final response = await apiClient.post(
+      ApiEndpoints.appleAuth,
+      data: {
+        'code': code,
+        'identityToken': identityToken,
+        'userIdentifier': userIdentifier,
+        'email': email,
+        'name': name,
+      },
+    );
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
@@ -69,14 +81,10 @@ class AuthRepository {
   Future<AuthResponseModel> refreshToken(String token) async {
     final response = await apiClient.post(
       ApiEndpoints.refresh,
-      data: {
-        'refreshToken': token,
-        'refresh_token': token,
-      },
+      data: {'refreshToken': token, 'refresh_token': token},
     );
     final data = response.data;
     final item = data is Map && data['data'] != null ? data['data'] : data;
     return AuthResponseModel.fromJson(Map<String, dynamic>.from(item));
   }
 }
-

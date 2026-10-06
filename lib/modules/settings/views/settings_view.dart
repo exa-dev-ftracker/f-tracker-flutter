@@ -6,6 +6,7 @@ import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/widgets/social_login_buttons.dart';
 import '../../../routes/app_routes.dart';
 import '../controllers/settings_controller.dart';
 
@@ -107,6 +108,19 @@ class SettingsView extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _buildSyncCenter(context),
+            const SizedBox(height: 24),
+
+            // Connected Accounts Section
+            const Text(
+              'Connected Accounts',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildConnectedAccounts(context),
             const SizedBox(height: 24),
 
             // Security & Preferences Section
@@ -420,7 +434,7 @@ class SettingsView extends StatelessWidget {
                 Expanded(
                   child: _buildMetricTile(
                     label: 'Local Cache',
-                    value: '${controller.localTransactionCount} tx',
+                    value: '${controller.localTransactionCount} tx • ${controller.localCategoryCount} cat',
                     icon: Icons.sd_storage_rounded,
                     color: AppColors.secondary,
                   ),
@@ -476,28 +490,52 @@ class SettingsView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Manual Sync Button
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            // Sync Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: isSyncing ? null : controller.triggerManualSync,
+                      icon: isSyncing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.sync_rounded, size: 18),
+                      label: Text(
+                        isSyncing ? 'Syncing...' : 'Sync Now',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
                 ),
-                onPressed: isSyncing ? null : controller.triggerManualSync,
-                icon: isSyncing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.sync_rounded, size: 18),
-                label: Text(
-                  isSyncing ? 'Syncing data...' : 'Sync Now',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.secondary,
+                        side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.4)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: isSyncing ? null : controller.triggerFullResync,
+                      icon: const Icon(Icons.cloud_download_rounded, size: 18),
+                      label: const Text(
+                        'Full Re-sync',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -607,6 +645,406 @@ class SettingsView extends StatelessWidget {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  Widget _buildConnectedAccounts(BuildContext context) {
+    return Column(
+      children: [
+        _buildGoogleAccountCard(context),
+        const SizedBox(height: 12),
+        _buildAppleAccountCard(context),
+      ],
+    );
+  }
+
+  Widget _buildGoogleAccountCard(BuildContext context) {
+    return Obx(() {
+      final isLinked = controller.isGoogleLinked.value;
+      final email = controller.googleEmail.value ?? (isLinked ? (controller.user?['email']?.toString() ?? '') : '');
+      final isBinding = controller.isBindingGoogle.value;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Center(
+                    child: CustomPaint(
+                      size: const Size(20, 20),
+                      painter: GoogleLogoPainter(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Google Account',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isLinked ? AppColors.success : AppColors.warning).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (isLinked ? AppColors.success : AppColors.warning).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              isLinked ? 'Connected' : 'Not Linked',
+                              style: TextStyle(
+                                color: isLinked ? AppColors.success : AppColors.warning,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isLinked
+                            ? (email.isNotEmpty ? email : 'Google account connected')
+                            : 'Link Google account for seamless login',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (isLinked)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: AppColors.success, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Google account active and linked',
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.surfaceVariant,
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: isBinding ? null : () => controller.bindGoogle(),
+                  icon: isBinding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        )
+                      : CustomPaint(size: const Size(16, 16), painter: GoogleLogoPainter()),
+                  label: Text(
+                    isBinding ? 'Connecting...' : 'Connect Google',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildAppleAccountCard(BuildContext context) {
+    return Obx(() {
+      final isLinked = controller.isAppleLinked.value;
+      final email = controller.appleEmail.value;
+      final isBinding = controller.isBindingApple.value;
+      final isUnbinding = controller.isUnbindingApple.value;
+      final isAppleReg = controller.isAppleRegistered.value;
+      final isGoogleLinked = controller.isGoogleLinked.value;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.apple, color: Colors.black, size: 24),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Apple ID',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isLinked ? AppColors.success : AppColors.warning).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (isLinked ? AppColors.success : AppColors.warning).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              isLinked ? 'Connected' : 'Not Connected',
+                              style: TextStyle(
+                                color: isLinked ? AppColors.success : AppColors.warning,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isLinked
+                            ? (email != null && email.isNotEmpty ? email : 'Apple ID active and linked')
+                            : 'Sign in quickly using your device Apple ID',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (isAppleReg && !isGoogleLinked) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: AppColors.warning, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Account registered via Apple ID. Link Google first before managing or unbinding Apple to prevent account lockout.',
+                        style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            if (isLinked)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded, color: AppColors.textMuted, size: 14),
+                      SizedBox(width: 6),
+                      Text(
+                        'Securely connected',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    onPressed: isUnbinding
+                        ? null
+                        : () => _confirmUnbindApple(context),
+                    icon: isUnbinding
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error),
+                          )
+                        : const Icon(Icons.link_off_rounded, size: 16),
+                    label: Text(
+                      isUnbinding ? 'Unbinding...' : 'Unbind Apple',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: isBinding ? null : () => controller.bindApple(),
+                  icon: isBinding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : const Icon(Icons.apple, size: 20, color: Colors.black),
+                  label: Text(
+                    isBinding ? 'Connecting...' : 'Connect Apple',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _confirmUnbindApple(BuildContext context) {
+    AppHaptics.heavy();
+    SnackbarService.dismissAll();
+
+    if (controller.isAppleRegistered.value && !controller.isGoogleLinked.value) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Cannot Unbind Apple ID', style: TextStyle(color: AppColors.textPrimary)),
+          content: const Text(
+            'This account was registered via Apple ID. You must link your Google account first to prevent permanent account lockout.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Unlink Apple ID', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Are you sure you want to unlink your Apple ID from this account? You will need to use your other sign-in methods.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              controller.unbindApple();
+            },
+            child: const Text('Unbind'),
+          ),
+        ],
+      ),
     );
   }
 }

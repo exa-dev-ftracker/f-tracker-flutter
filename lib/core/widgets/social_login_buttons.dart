@@ -68,7 +68,7 @@ class GoogleSignInButton extends StatelessWidget {
   Widget _buildGoogleIcon() {
     return CustomPaint(
       size: const Size(20, 20),
-      painter: _GoogleLogoPainter(),
+      painter: GoogleLogoPainter(),
     );
   }
 }
@@ -136,7 +136,7 @@ class AppleSignInButton extends StatelessWidget {
   }
 }
 
-class _GoogleLogoPainter extends CustomPainter {
+class GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double w = size.width;

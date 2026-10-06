@@ -35,5 +35,8 @@ class ApiEndpoints {
   static const String userTimezone = '/api/v1/user/timezone';
   static const String userPhone = '/api/v1/user/phone';
   static const String userChatbot = '/api/v1/user/chatbot';
+  static const String bindGoogle = '/api/v1/user/bind-google';
+  static const String bindApple = '/api/v1/user/bind-apple';
+  static const String unbindApple = '/api/v1/user/unbind-apple';
   static const String deleteAccount = '/api/v1/user/account';
 }
