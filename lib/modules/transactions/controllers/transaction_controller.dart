@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -15,6 +16,29 @@ import '../../dashboard/controllers/dashboard_controller.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 
+enum TransactionDisplayMode { list, calendar }
+
+class DailyCalendarSummary {
+  final DateTime date;
+  final double totalIncome;
+  final double totalExpense;
+  final int count;
+  final List<TransactionModel> transactions;
+
+  const DailyCalendarSummary({
+    required this.date,
+    this.totalIncome = 0.0,
+    this.totalExpense = 0.0,
+    this.count = 0,
+    this.transactions = const [],
+  });
+
+  double get netBalance => totalIncome - totalExpense;
+  bool get hasIncome => totalIncome > 0;
+  bool get hasExpense => totalExpense > 0;
+  bool get hasTransactions => count > 0;
+}
+
 class TransactionController extends GetxController {
   final TransactionRepository repository;
   final StorageService storageService;
@@ -26,6 +50,11 @@ class TransactionController extends GetxController {
 
   final transactions = <TransactionModel>[].obs;
   final isLoading = false.obs;
+
+  // View Mode & Calendar States
+  final displayMode = TransactionDisplayMode.list.obs;
+  final calendarFocusedMonth = Rx<DateTime>(DateTime(DateTime.now().year, DateTime.now().month, 1));
+  final calendarSelectedDate = Rx<DateTime>(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
 
   // Filters
   final selectedView = 'Month'.obs; // 'Day', 'Week', 'Month', 'Year', 'All'
@@ -53,6 +82,11 @@ class TransactionController extends GetxController {
   final hasMore = true.obs;
   final isLoadingMore = false.obs;
   final scrollController = ScrollController();
+
+  // Cancel Tokens to abort previous in-flight HTTP requests during rapid month switching / filter spamming
+  CancelToken? _fetchCancelToken;
+  CancelToken? _summaryCancelToken;
+  CancelToken? _loadMoreCancelToken;
 
   // Selected Detail Transaction (for bottom sheet)
   final selectedDetailTx = Rxn<TransactionModel>();
@@ -210,7 +244,167 @@ class TransactionController extends GetxController {
     }
   }
 
+  Future<void> fetchCalendarTransactions({bool isRefresh = true}) async {
+    CancelToken? activeCancelToken;
+
+    if (isRefresh) {
+      if (_fetchCancelToken != null && !_fetchCancelToken!.isCancelled) {
+        _fetchCancelToken!.cancel('Aborted due to calendar navigation / month switch');
+      }
+      _fetchCancelToken = CancelToken();
+      activeCancelToken = _fetchCancelToken;
+
+      if (_summaryCancelToken != null && !_summaryCancelToken!.isCancelled) {
+        _summaryCancelToken!.cancel('Aborted due to calendar navigation');
+        _summaryCancelToken = null;
+      }
+
+      if (_loadMoreCancelToken != null && !_loadMoreCancelToken!.isCancelled) {
+        _loadMoreCancelToken!.cancel('Aborted due to calendar navigation');
+        _loadMoreCancelToken = null;
+      }
+    } else {
+      activeCancelToken = _fetchCancelToken;
+    }
+
+    try {
+      if (isRefresh) {
+        isLoading.value = true;
+      }
+      if (!syncService.isOnline.value) {
+        _loadCachedTransactions();
+        return;
+      }
+
+      final focused = calendarFocusedMonth.value;
+      final firstDayOfMonth = DateTime(focused.year, focused.month, 1);
+      final weekdayOffset = firstDayOfMonth.weekday % 7;
+      final daysInCurrentMonth = DateTime(focused.year, focused.month + 1, 0).day;
+      final daysInPrevMonth = DateTime(focused.year, focused.month, 0).day;
+      final totalDaysNeeded = weekdayOffset + daysInCurrentMonth;
+      final totalCells = ((totalDaysNeeded + 6) ~/ 7) * 7;
+
+      final DateTime fromDate;
+      if (weekdayOffset > 0) {
+        final dayNum = daysInPrevMonth - weekdayOffset + 1;
+        fromDate = DateTime(focused.year, focused.month - 1, dayNum);
+      } else {
+        fromDate = DateTime(focused.year, focused.month, 1);
+      }
+
+      final remainingAfter = totalCells - (weekdayOffset + daysInCurrentMonth);
+      final DateTime toDate;
+      if (remainingAfter > 0) {
+        toDate = DateTime(focused.year, focused.month + 1, remainingAfter);
+      } else {
+        toDate = DateTime(focused.year, focused.month, daysInCurrentMonth);
+      }
+
+      final res = await repository.getCalendarTransactions(
+        from: fromDate,
+        to: toDate,
+        type: selectedType.value.isNotEmpty ? selectedType.value : null,
+        category: selectedCategory.value.isNotEmpty && selectedCategory.value != 'all'
+            ? selectedCategory.value
+            : null,
+        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        sort: selectedSort.value,
+        cancelToken: activeCancelToken,
+      );
+
+      // If a newer request was triggered while waiting, discard this obsolete response
+      if (isRefresh && activeCancelToken != _fetchCancelToken) {
+        return;
+      }
+
+      // Preserve any pending local items awaiting sync
+      final pendingItems = transactions.where((t) => t.isPendingSync).toList();
+      final merged = <TransactionModel>[...pendingItems];
+      for (final r in res.items) {
+        if (!merged.any((m) => m.id == r.id)) {
+          merged.add(r);
+        }
+      }
+
+      transactions.assignAll(merged);
+
+      // Update monthly totals for focused month specifically
+      double mIncome = 0.0;
+      double mExpense = 0.0;
+      for (final t in merged) {
+        if (t.date.year == focused.year && t.date.month == focused.month) {
+          if (t.isIncome) {
+            mIncome += t.amount;
+          } else {
+            mExpense += t.amount;
+          }
+        }
+      }
+      incomeTotal.value = mIncome;
+      expenseTotal.value = mExpense;
+      balance.value = mIncome - mExpense;
+
+      // Smart cache merge
+      final existingCached = storageService.cachedTransactions;
+      final cachedMap = <String, Map<String, dynamic>>{};
+      for (final item in existingCached) {
+        final id = item['id']?.toString() ?? item['_id']?.toString();
+        if (id != null) cachedMap[id] = Map<String, dynamic>.from(item);
+      }
+      for (final item in merged) {
+        cachedMap[item.id] = item.toJson();
+      }
+      await storageService.saveCachedTransactions(cachedMap.values.toList());
+    } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        LoggerService.d(
+          'Calendar transaction fetch aborted gracefully (navigation spam prevention)',
+          tag: 'TransactionController',
+        );
+        return;
+      }
+      LoggerService.e(
+        'Failed to fetch calendar transactions, loading cache: $e',
+        tag: 'TransactionController',
+      );
+      _loadCachedTransactions();
+    } finally {
+      if (isRefresh && activeCancelToken == _fetchCancelToken) {
+        isLoading.value = false;
+      }
+    }
+  }
+
   Future<void> fetchTransactions({bool isRefresh = true}) async {
+    if (displayMode.value == TransactionDisplayMode.calendar) {
+      return fetchCalendarTransactions(isRefresh: isRefresh);
+    }
+
+    CancelToken? activeCancelToken;
+    CancelToken? summaryCancelToken;
+
+    if (isRefresh) {
+      if (_fetchCancelToken != null && !_fetchCancelToken!.isCancelled) {
+        _fetchCancelToken!.cancel('Aborted due to new transaction fetch / month switch');
+      }
+      _fetchCancelToken = CancelToken();
+      activeCancelToken = _fetchCancelToken;
+
+      if (_summaryCancelToken != null && !_summaryCancelToken!.isCancelled) {
+        _summaryCancelToken!.cancel('Aborted due to new summary fetch / month switch');
+      }
+      _summaryCancelToken = CancelToken();
+      summaryCancelToken = _summaryCancelToken;
+
+      if (_loadMoreCancelToken != null && !_loadMoreCancelToken!.isCancelled) {
+        _loadMoreCancelToken!.cancel('Aborted due to transaction list refresh');
+        _loadMoreCancelToken = null;
+      }
+    } else {
+      activeCancelToken = _fetchCancelToken;
+      summaryCancelToken = _summaryCancelToken;
+    }
+
     try {
       if (isRefresh) {
         isLoading.value = true;
@@ -224,7 +418,7 @@ class TransactionController extends GetxController {
       }
 
       // Fetch summary in parallel for accurate KPI cards
-      _fetchSummary();
+      _fetchSummary(cancelToken: summaryCancelToken);
 
       final res = await repository.getTransactionsPaginated(
         view: selectedView.value,
@@ -238,7 +432,13 @@ class TransactionController extends GetxController {
         month: filterMonth.value,
         page: 1,
         limit: 20,
+        cancelToken: activeCancelToken,
       );
+
+      // If a newer request was triggered while waiting, discard this obsolete response
+      if (isRefresh && activeCancelToken != _fetchCancelToken) {
+        return;
+      }
 
       currentPage.value = 1;
       nextCursor.value = res.nextCursor;
@@ -267,13 +467,20 @@ class TransactionController extends GetxController {
       }
       await storageService.saveCachedTransactions(cachedMap.values.toList());
     } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        LoggerService.d(
+          'Transaction fetch aborted gracefully (navigation spam prevention)',
+          tag: 'TransactionController',
+        );
+        return;
+      }
       LoggerService.e(
         'Failed to fetch transactions, loading cache: $e',
         tag: 'TransactionController',
       );
       _loadCachedTransactions();
     } finally {
-      if (isRefresh) {
+      if (isRefresh && activeCancelToken == _fetchCancelToken) {
         isLoading.value = false;
       }
     }
@@ -283,6 +490,12 @@ class TransactionController extends GetxController {
     if (isLoading.value || isLoadingMore.value || !hasMore.value) {
       return;
     }
+
+    if (_loadMoreCancelToken != null && !_loadMoreCancelToken!.isCancelled) {
+      _loadMoreCancelToken!.cancel('New page load initiated');
+    }
+    _loadMoreCancelToken = CancelToken();
+    final token = _loadMoreCancelToken;
 
     try {
       isLoadingMore.value = true;
@@ -299,7 +512,11 @@ class TransactionController extends GetxController {
         month: filterMonth.value,
         page: nextPage,
         limit: 20,
+        cursor: nextCursor.value,
+        cancelToken: token,
       );
+
+      if (token != _loadMoreCancelToken) return;
 
       currentPage.value = nextPage;
       nextCursor.value = res.nextCursor;
@@ -322,13 +539,18 @@ class TransactionController extends GetxController {
       }
       await storageService.saveCachedTransactions(cachedMap.values.toList());
     } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        return;
+      }
       LoggerService.e('Failed to load more transactions: $e', tag: 'TransactionController');
     } finally {
-      isLoadingMore.value = false;
+      if (token == _loadMoreCancelToken) {
+        isLoadingMore.value = false;
+      }
     }
   }
 
-  Future<void> _fetchSummary() async {
+  Future<void> _fetchSummary({CancelToken? cancelToken}) async {
     try {
       final summary = await repository.getSummary(
         view: selectedView.value,
@@ -339,14 +561,22 @@ class TransactionController extends GetxController {
         search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
         year: filterYear.value,
         month: filterMonth.value,
+        cancelToken: cancelToken,
       );
+      if (cancelToken != null && cancelToken != _summaryCancelToken) {
+        return;
+      }
       if (summary.isNotEmpty) {
         incomeTotal.value = (summary['incomeTotal'] as num?)?.toDouble() ?? 0.0;
         expenseTotal.value = (summary['expenseTotal'] as num?)?.toDouble() ?? 0.0;
         balance.value = (summary['balance'] as num?)?.toDouble() ?? 0.0;
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        return;
+      }
+    }
     _recalculateSummary();
   }
 
@@ -473,6 +703,113 @@ class TransactionController extends GetxController {
       'net': inc - exp,
     };
   }
+
+  // Calendar Actions & Getters
+  void toggleDisplayMode() {
+    AppHaptics.selection();
+    if (displayMode.value == TransactionDisplayMode.list) {
+      displayMode.value = TransactionDisplayMode.calendar;
+      final sel = calendarSelectedDate.value;
+      calendarFocusedMonth.value = DateTime(sel.year, sel.month, 1);
+      _syncMonthForCalendar();
+    } else {
+      displayMode.value = TransactionDisplayMode.list;
+      fetchTransactions();
+    }
+  }
+
+  void onCalendarDaySelected(DateTime date) {
+    AppHaptics.selection();
+    calendarSelectedDate.value = DateTime(date.year, date.month, date.day);
+    if (date.year != calendarFocusedMonth.value.year || date.month != calendarFocusedMonth.value.month) {
+      calendarFocusedMonth.value = DateTime(date.year, date.month, 1);
+      _syncMonthForCalendar();
+    }
+  }
+
+  void nextCalendarMonth() {
+    AppHaptics.selection();
+    final current = calendarFocusedMonth.value;
+    calendarFocusedMonth.value = DateTime(current.year, current.month + 1, 1);
+    calendarSelectedDate.value = DateTime(calendarFocusedMonth.value.year, calendarFocusedMonth.value.month, 1);
+    _syncMonthForCalendar();
+  }
+
+  void prevCalendarMonth() {
+    AppHaptics.selection();
+    final current = calendarFocusedMonth.value;
+    calendarFocusedMonth.value = DateTime(current.year, current.month - 1, 1);
+    calendarSelectedDate.value = DateTime(calendarFocusedMonth.value.year, calendarFocusedMonth.value.month, 1);
+    _syncMonthForCalendar();
+  }
+
+  void resetCalendarToToday() {
+    AppHaptics.selection();
+    final now = DateTime.now();
+    calendarFocusedMonth.value = DateTime(now.year, now.month, 1);
+    calendarSelectedDate.value = DateTime(now.year, now.month, now.day);
+    _syncMonthForCalendar();
+  }
+
+  void _syncMonthForCalendar() {
+    final year = calendarFocusedMonth.value.year;
+    final month = calendarFocusedMonth.value.month;
+    filterYear.value = year;
+    filterMonth.value = month;
+    selectedView.value = 'Custom';
+    fetchCalendarTransactions();
+  }
+
+  Map<String, DailyCalendarSummary> get calendarDailySummaries {
+    final summaries = <String, DailyCalendarSummary>{};
+    final grouped = groupedTransactions;
+    for (final entry in grouped.entries) {
+      final txs = entry.value;
+      double inc = 0.0;
+      double exp = 0.0;
+      for (final t in txs) {
+        if (t.isIncome) {
+          inc += t.amount;
+        } else {
+          exp += t.amount;
+        }
+      }
+      final parts = entry.key.split('-').map(int.parse).toList();
+      final dt = DateTime(parts[0], parts[1], parts[2]);
+      summaries[entry.key] = DailyCalendarSummary(
+        date: dt,
+        totalIncome: inc,
+        totalExpense: exp,
+        count: txs.length,
+        transactions: txs,
+      );
+    }
+    return summaries;
+  }
+
+  List<TransactionModel> get selectedDayTransactions {
+    final sel = calendarSelectedDate.value;
+    final key = '${sel.year.toString().padLeft(4, '0')}-${sel.month.toString().padLeft(2, '0')}-${sel.day.toString().padLeft(2, '0')}';
+    return groupedTransactions[key] ?? [];
+  }
+
+  double get selectedDayIncome {
+    double total = 0.0;
+    for (final t in selectedDayTransactions) {
+      if (t.isIncome) total += t.amount;
+    }
+    return total;
+  }
+
+  double get selectedDayExpense {
+    double total = 0.0;
+    for (final t in selectedDayTransactions) {
+      if (!t.isIncome) total += t.amount;
+    }
+    return total;
+  }
+
+  double get selectedDayNet => selectedDayIncome - selectedDayExpense;
 
   void _upsertCachedTransaction(TransactionModel tx) {
     final cached = storageService.cachedTransactions;
@@ -961,6 +1298,15 @@ class TransactionController extends GetxController {
 
   @override
   void onClose() {
+    if (_fetchCancelToken != null && !_fetchCancelToken!.isCancelled) {
+      _fetchCancelToken!.cancel('TransactionController disposed');
+    }
+    if (_summaryCancelToken != null && !_summaryCancelToken!.isCancelled) {
+      _summaryCancelToken!.cancel('TransactionController disposed');
+    }
+    if (_loadMoreCancelToken != null && !_loadMoreCancelToken!.isCancelled) {
+      _loadMoreCancelToken!.cancel('TransactionController disposed');
+    }
     scrollController.dispose();
     searchController.dispose();
     super.onClose();

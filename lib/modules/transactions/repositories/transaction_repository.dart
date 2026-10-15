@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../models/transaction_model.dart';
@@ -22,10 +23,105 @@ class PaginatedTransactionsResponse {
   });
 }
 
+class CalendarTransactionsResponse {
+  final List<TransactionModel> items;
+  final int total;
+  final String from;
+  final String to;
+  final double totalIncome;
+  final double totalExpense;
+  final double balance;
+  final int count;
+
+  CalendarTransactionsResponse({
+    required this.items,
+    this.total = 0,
+    this.from = '',
+    this.to = '',
+    this.totalIncome = 0.0,
+    this.totalExpense = 0.0,
+    this.balance = 0.0,
+    this.count = 0,
+  });
+}
+
 class TransactionRepository {
   final ApiClient apiClient;
 
   TransactionRepository({required this.apiClient});
+
+  Future<CalendarTransactionsResponse> getCalendarTransactions({
+    required DateTime from,
+    required DateTime to,
+    String? type,
+    String? category,
+    String? search,
+    String? sort,
+    CancelToken? cancelToken,
+  }) async {
+    final query = <String, dynamic>{
+      'from': '${from.year.toString().padLeft(4, '0')}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}',
+      'to': '${to.year.toString().padLeft(4, '0')}-${to.month.toString().padLeft(2, '0')}-${to.day.toString().padLeft(2, '0')}',
+    };
+    if (type != null && type.isNotEmpty && type != 'All') query['type'] = type;
+    if (category != null && category.isNotEmpty && category != 'all') query['category'] = category;
+    if (search != null && search.isNotEmpty) query['search'] = search;
+    if (sort != null && sort.isNotEmpty) query['sort'] = sort;
+
+    final response = await apiClient.get(
+      ApiEndpoints.transactionsCalendar,
+      queryParameters: query,
+      cancelToken: cancelToken,
+    );
+
+    final data = response.data;
+    List list = [];
+    int total = 0;
+    String fromStr = '';
+    String toStr = '';
+    double totalIncome = 0.0;
+    double totalExpense = 0.0;
+    double balance = 0.0;
+    int count = 0;
+
+    if (data is Map && data['data'] != null) {
+      final d = data['data'];
+      if (d is Map) {
+        if (d['items'] is List) {
+          list = d['items'];
+        }
+        total = (d['total'] as num?)?.toInt() ?? list.length;
+        fromStr = d['from']?.toString() ?? '';
+        toStr = d['to']?.toString() ?? '';
+        if (d['summary'] is Map) {
+          final s = d['summary'];
+          totalIncome = (s['totalIncome'] as num?)?.toDouble() ?? 0.0;
+          totalExpense = (s['totalExpense'] as num?)?.toDouble() ?? 0.0;
+          balance = (s['balance'] as num?)?.toDouble() ?? 0.0;
+          count = (s['count'] as num?)?.toInt() ?? 0;
+        }
+      } else if (d is List) {
+        list = d;
+      }
+    } else if (data is List) {
+      list = data;
+    }
+
+    final items = list
+        .map((e) => TransactionModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    return CalendarTransactionsResponse(
+      items: items,
+      total: total,
+      from: fromStr,
+      to: toStr,
+      totalIncome: totalIncome,
+      totalExpense: totalExpense,
+      balance: balance,
+      count: count,
+    );
+  }
 
   Future<PaginatedTransactionsResponse> getTransactionsPaginated({
     String? view,
@@ -39,6 +135,7 @@ class TransactionRepository {
     int limit = 20,
     int? offset,
     String? cursor,
+    CancelToken? cancelToken,
   }) async {
     final query = <String, dynamic>{};
     if (view != null && view.isNotEmpty) query['view'] = view;
@@ -59,6 +156,7 @@ class TransactionRepository {
     final response = await apiClient.get(
       ApiEndpoints.transactions,
       queryParameters: query,
+      cancelToken: cancelToken,
     );
 
     final data = response.data;
@@ -122,6 +220,7 @@ class TransactionRepository {
     int? limit,
     int? offset,
     String? cursor,
+    CancelToken? cancelToken,
   }) async {
     final res = await getTransactionsPaginated(
       view: view,
@@ -135,6 +234,7 @@ class TransactionRepository {
       limit: limit ?? 20,
       offset: offset,
       cursor: cursor,
+      cancelToken: cancelToken,
     );
     return res.items;
   }
@@ -193,6 +293,7 @@ class TransactionRepository {
     String? search,
     int? year,
     int? month,
+    CancelToken? cancelToken,
   }) async {
     final query = <String, dynamic>{};
     if (view != null && view.isNotEmpty) query['view'] = view;
@@ -205,6 +306,7 @@ class TransactionRepository {
     final response = await apiClient.get(
       ApiEndpoints.transactionSummary,
       queryParameters: query,
+      cancelToken: cancelToken,
     );
     final data = response.data;
     if (data is Map && data['data'] is Map) {

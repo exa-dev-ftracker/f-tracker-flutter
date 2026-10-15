@@ -110,8 +110,8 @@ class CurrencyFormatter {
     } else if (txDate.toString().isNotEmpty) {
       final str = txDate.toString().trim();
       final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-      if (match != null) {
-        // Fixed calendar date: do NOT convert via timezone
+      if (match != null && !str.contains('T') && !str.contains(':')) {
+        // Fixed calendar date without time component: do NOT convert via timezone
         calendarDate = DateTime(
           int.parse(match.group(1)!),
           int.parse(match.group(2)!),
@@ -158,7 +158,7 @@ class CurrencyFormatter {
     } else {
       final str = date.toString().trim();
       final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(str);
-      if (match != null) {
+      if (match != null && !str.contains('T') && !str.contains(':')) {
         dt = DateTime(
           int.parse(match.group(1)!),
           int.parse(match.group(2)!),

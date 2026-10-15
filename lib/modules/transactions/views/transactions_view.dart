@@ -13,6 +13,7 @@ import '../controllers/transaction_controller.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'widgets/transaction_card.dart';
+import 'widgets/transaction_calendar_widget.dart';
 
 class TransactionsView extends StatelessWidget {
   const TransactionsView({super.key});
@@ -49,6 +50,21 @@ class TransactionsView extends StatelessWidget {
         title: const Text('Transactions'),
         backgroundColor: AppColors.surface,
         actions: [
+          // View Mode Switcher (List vs Calendar)
+          Obx(() => IconButton(
+            icon: Icon(
+              controller.displayMode.value == TransactionDisplayMode.list
+                  ? Icons.calendar_month_rounded
+                  : Icons.view_list_rounded,
+              color: controller.displayMode.value == TransactionDisplayMode.calendar
+                  ? AppColors.primary
+                  : AppColors.textPrimary,
+            ),
+            tooltip: controller.displayMode.value == TransactionDisplayMode.list
+                ? 'Calendar View'
+                : 'List View',
+            onPressed: controller.toggleDisplayMode,
+          )),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh data',
@@ -72,273 +88,399 @@ class TransactionsView extends StatelessWidget {
           // Offline & Sync Status Banner
           const OfflineSyncBanner(),
 
-          // Search & Filter Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            color: AppColors.surface,
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  controller: controller.searchController,
-                  onChanged: controller.onSearchChanged,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Search transactions...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: () {
-                              controller.searchController.clear();
-                              controller.onSearchChanged('');
-                            },
-                          )
-                        : const SizedBox.shrink()),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Period View Pills
-                SizedBox(
-                  height: 34,
-                  child: Obx(() => ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final period in ['Day', 'Week', 'Month', 'Year', 'All'])
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _buildViewChip(period, controller.selectedView.value == period),
-                        ),
-                      // Custom Month/Year picker button
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildCustomDateChip(context),
-                      ),
-                    ],
-                  )),
-                ),
-                const SizedBox(height: 10),
-
-                // Custom date indicator banner
-                Obx(() {
-                  if (controller.filterYear.value == null) {
-                    return const SizedBox.shrink();
-                  }
-                  final year = controller.filterYear.value!;
-                  final month = controller.filterMonth.value;
-                  final label = month != null
-                      ? '${_monthNames[month - 1]} $year'
-                      : 'Year $year';
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    margin: const EdgeInsets.only(bottom: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.filter_alt_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.8)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Filtered: $label',
-                          style: TextStyle(
-                            color: AppColors.primary.withValues(alpha: 0.9),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: controller.clearCustomFilter,
-                          child: Icon(Icons.close_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-
-                // Category active indicator banner
-                Obx(() {
-                  if (controller.selectedCategory.value.isEmpty ||
-                      controller.selectedCategory.value == 'all') {
-                    return const SizedBox.shrink();
-                  }
-                  final catName = controller.selectedCategoryName.value.isNotEmpty
-                      ? controller.selectedCategoryName.value
-                      : 'Selected Category';
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    margin: const EdgeInsets.only(bottom: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.category_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.8)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Category: $catName',
-                          style: TextStyle(
-                            color: AppColors.primary.withValues(alpha: 0.9),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: controller.clearCategoryFilter,
-                          child: Icon(Icons.close_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-
-                // Type Filter Pills
-                Obx(() => Row(
-                  children: [
-                    _buildFilterChip('All', ''),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Expense', 'Expense'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Income', 'Income'),
-                  ],
-                )),
-                const SizedBox(height: 10),
-
-                // Category & Sort Toolbar Row
-                Row(
-                  children: [
-                    // Category Filter Button
-                    Expanded(
-                      child: _buildCategoryDropdownButton(context),
-                    ),
-                    const SizedBox(width: 10),
-                    // Sort Filter Button
-                    Expanded(
-                      child: _buildSortDropdownButton(context),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Total Overview Strip
-          Obx(() => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${controller.transactions.length} Transactions',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      '+${CurrencyFormatter.formatCompact(controller.incomeTotal.value)}',
-                      style: const TextStyle(color: AppColors.income, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '-${CurrencyFormatter.formatCompact(controller.expenseTotal.value)}',
-                      style: const TextStyle(color: AppColors.expense, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )),
-
-          // Transactions List
+          // Body View (List or Calendar)
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => controller.fetchTransactions(),
-              color: AppColors.primary,
-              child: Obx(() {
-                if (controller.isLoading.value && controller.transactions.isEmpty) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                }
-
-                if (controller.transactions.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'No transactions yet',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Tap the + button to record a transaction',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final grouped = controller.groupedTransactions;
-                final dateKeys = grouped.keys.toList();
-
-                return ListView.builder(
-                  controller: controller.scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  itemCount: dateKeys.length + (controller.isLoadingMore.value ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == dateKeys.length) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final dateKey = dateKeys[index];
-                    final dailyTxs = grouped[dateKey] ?? [];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildDailySectionHeader(dateKey, dailyTxs),
-                          ...dailyTxs.map((tx) => Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: TransactionCard(
-                                  transaction: tx,
-                                  onDelete: () => controller.deleteTransaction(tx),
-                                ),
-                              )),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              }),
-            ),
+            child: Obx(() {
+              if (controller.displayMode.value == TransactionDisplayMode.calendar) {
+                return _buildCalendarView(context);
+              }
+              return _buildListView(context);
+            }),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCalendarView(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: () => controller.fetchTransactions(),
+      color: AppColors.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Calendar Month Grid Widget
+            Obx(() => TransactionCalendarWidget(
+              focusedMonth: controller.calendarFocusedMonth.value,
+              selectedDate: controller.calendarSelectedDate.value,
+              dailySummaries: controller.calendarDailySummaries,
+              onSelectDate: controller.onCalendarDaySelected,
+              onPrevMonth: controller.prevCalendarMonth,
+              onNextMonth: controller.nextCalendarMonth,
+              onToday: controller.resetCalendarToToday,
+            )),
+            const SizedBox(height: 18),
+
+            // Selected Date Breakdown Header & Summary
+            Obx(() {
+              final sel = controller.calendarSelectedDate.value;
+              final key = '${sel.year.toString().padLeft(4, '0')}-${sel.month.toString().padLeft(2, '0')}-${sel.day.toString().padLeft(2, '0')}';
+              final dailyTxs = controller.selectedDayTransactions;
+              return _buildDailySectionHeader(key, dailyTxs);
+            }),
+            const SizedBox(height: 10),
+
+            // Daily Transactions List
+            Obx(() {
+              final dailyTxs = controller.selectedDayTransactions;
+
+              if (dailyTxs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                  margin: const EdgeInsets.only(top: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.event_note_rounded,
+                          size: 26,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No transactions on this date',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Tap below to record an income or expense',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: () => Get.toNamed(Routes.addTransaction),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text(
+                          'Record Transaction',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Column(
+                children: dailyTxs.map((tx) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TransactionCard(
+                    transaction: tx,
+                    onDelete: () => controller.deleteTransaction(tx),
+                  ),
+                )).toList(),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListView(BuildContext context) {
+    return Column(
+      children: [
+        // Search & Filter Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          color: AppColors.surface,
+          child: Column(
+            children: [
+              // Search Bar
+              TextField(
+                controller: controller.searchController,
+                onChanged: controller.onSearchChanged,
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Search transactions...',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () {
+                            controller.searchController.clear();
+                            controller.onSearchChanged('');
+                          },
+                        )
+                      : const SizedBox.shrink()),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Period View Pills
+              SizedBox(
+                height: 34,
+                child: Obx(() => ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final period in ['Day', 'Week', 'Month', 'Year', 'All'])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _buildViewChip(period, controller.selectedView.value == period),
+                      ),
+                    // Custom Month/Year picker button
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _buildCustomDateChip(context),
+                    ),
+                  ],
+                )),
+              ),
+              const SizedBox(height: 10),
+
+              // Custom date indicator banner
+              Obx(() {
+                if (controller.filterYear.value == null) {
+                  return const SizedBox.shrink();
+                }
+                final year = controller.filterYear.value!;
+                final month = controller.filterMonth.value;
+                final label = month != null
+                    ? '${_monthNames[month - 1]} $year'
+                    : 'Year $year';
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.filter_alt_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.8)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Filtered: $label',
+                        style: TextStyle(
+                          color: AppColors.primary.withValues(alpha: 0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: controller.clearCustomFilter,
+                        child: Icon(Icons.close_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              // Category active indicator banner
+              Obx(() {
+                if (controller.selectedCategory.value.isEmpty ||
+                    controller.selectedCategory.value == 'all') {
+                  return const SizedBox.shrink();
+                }
+                final catName = controller.selectedCategoryName.value.isNotEmpty
+                    ? controller.selectedCategoryName.value
+                    : 'Selected Category';
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.category_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.8)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Category: $catName',
+                        style: TextStyle(
+                          color: AppColors.primary.withValues(alpha: 0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: controller.clearCategoryFilter,
+                        child: Icon(Icons.close_rounded, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              // Type Filter Pills
+              Obx(() => Row(
+                children: [
+                  _buildFilterChip('All', ''),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Expense', 'Expense'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Income', 'Income'),
+                ],
+              )),
+              const SizedBox(height: 10),
+
+              // Category & Sort Toolbar Row
+              Row(
+                children: [
+                  // Category Filter Button
+                  Expanded(
+                    child: _buildCategoryDropdownButton(context),
+                  ),
+                  const SizedBox(width: 10),
+                  // Sort Filter Button
+                  Expanded(
+                    child: _buildSortDropdownButton(context),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Total Overview Strip
+        Obx(() => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${controller.transactions.length} Transactions',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+              Row(
+                children: [
+                  Text(
+                    '+${CurrencyFormatter.formatCompact(controller.incomeTotal.value)}',
+                    style: const TextStyle(color: AppColors.income, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '-${CurrencyFormatter.formatCompact(controller.expenseTotal.value)}',
+                    style: const TextStyle(color: AppColors.expense, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        )),
+
+        // Transactions List
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => controller.fetchTransactions(),
+            color: AppColors.primary,
+            child: Obx(() {
+              if (controller.isLoading.value && controller.transactions.isEmpty) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+              }
+
+              if (controller.transactions.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.receipt_long_outlined, size: 54, color: AppColors.textMuted.withValues(alpha: 0.5)),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'No transactions yet',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Tap the + button to record a transaction',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final grouped = controller.groupedTransactions;
+              final dateKeys = grouped.keys.toList();
+
+              return ListView.builder(
+                controller: controller.scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                itemCount: dateKeys.length + (controller.isLoadingMore.value ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == dateKeys.length) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final dateKey = dateKeys[index];
+                  final dailyTxs = grouped[dateKey] ?? [];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildDailySectionHeader(dateKey, dailyTxs),
+                        ...dailyTxs.map((tx) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: TransactionCard(
+                                transaction: tx,
+                                onDelete: () => controller.deleteTransaction(tx),
+                              ),
+                            )),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
