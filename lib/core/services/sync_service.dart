@@ -438,7 +438,7 @@ class SyncService extends GetxService {
       final localIdx = txController.transactions.indexWhere((t) => t.id == clientId);
       if (localIdx != -1) {
         txController.transactions[localIdx] = serverTx.copyWith(isPendingSync: false);
-        txController.transactions.refresh();
+        txController.sortTransactions();
       }
     }
   }

@@ -102,6 +102,104 @@ class TransactionController extends GetxController {
   }
 
 
+  bool _matchesCurrentFilter(TransactionModel t) {
+    final userTz = storageService.user?['timezone']?.toString();
+    final now = CurrencyFormatter.nowInTimezone(userTz);
+
+    if (selectedView.value == 'Day') {
+      final start = DateTime(now.year, now.month, now.day);
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+      if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+    } else if (selectedView.value == 'Week') {
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final start = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final end = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59, 999);
+      if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+    } else if (selectedView.value == 'Month') {
+      final start = DateTime(now.year, now.month, 1);
+      final lastDay = DateTime(now.year, now.month + 1, 0).day;
+      final end = DateTime(now.year, now.month, lastDay, 23, 59, 59, 999);
+      if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+    } else if (selectedView.value == 'Year') {
+      final start = DateTime(now.year, 1, 1);
+      final end = DateTime(now.year, 12, 31, 23, 59, 59, 999);
+      if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+    } else if (selectedView.value == 'Custom') {
+      if (filterYear.value != null && filterMonth.value != null) {
+        final y = filterYear.value!;
+        final m = filterMonth.value!;
+        final start = DateTime(y, m, 1);
+        final lastDay = DateTime(y, m + 1, 0).day;
+        final end = DateTime(y, m, lastDay, 23, 59, 59, 999);
+        if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+      } else if (filterYear.value != null) {
+        final y = filterYear.value!;
+        final start = DateTime(y, 1, 1);
+        final end = DateTime(y, 12, 31, 23, 59, 59, 999);
+        if (t.date.isBefore(start) || t.date.isAfter(end)) return false;
+      }
+    }
+
+    if (selectedType.value.isNotEmpty) {
+      if (t.type.toLowerCase() != selectedType.value.toLowerCase()) return false;
+    }
+
+    if (selectedCategory.value.isNotEmpty && selectedCategory.value != 'all') {
+      if (t.category?.id != selectedCategory.value) return false;
+    }
+
+    if (searchQuery.value.isNotEmpty) {
+      final q = searchQuery.value.toLowerCase();
+      if (!t.description.toLowerCase().contains(q)) return false;
+    }
+
+    return true;
+  }
+
+  void _sortTransactionList(List<TransactionModel> list) {
+    switch (selectedSort.value) {
+      case 'oldest':
+        list.sort((a, b) {
+          final cmp = a.date.compareTo(b.date);
+          if (cmp != 0) return cmp;
+          return a.createdAt.compareTo(b.createdAt);
+        });
+        break;
+      case 'highest':
+        list.sort((a, b) {
+          final cmp = b.amount.compareTo(a.amount);
+          if (cmp != 0) return cmp;
+          final dateCmp = b.date.compareTo(a.date);
+          if (dateCmp != 0) return dateCmp;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case 'lowest':
+        list.sort((a, b) {
+          final cmp = a.amount.compareTo(b.amount);
+          if (cmp != 0) return cmp;
+          final dateCmp = a.date.compareTo(b.date);
+          if (dateCmp != 0) return dateCmp;
+          return a.createdAt.compareTo(b.createdAt);
+        });
+        break;
+      case 'newest':
+      default:
+        list.sort((a, b) {
+          final cmp = b.date.compareTo(a.date);
+          if (cmp != 0) return cmp;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+    }
+  }
+
+  void sortTransactions() {
+    _sortTransactionList(transactions);
+    transactions.refresh();
+  }
+
   void _loadCachedTransactions() {
     final cached = storageService.cachedTransactions;
     var list = <TransactionModel>[];
@@ -117,7 +215,7 @@ class TransactionController extends GetxController {
     final inMemoryPending = transactions.where((t) => t.isPendingSync).toList();
     for (final p in inMemoryPending) {
       if (!list.any((item) => item.id == p.id)) {
-        list.insert(0, p);
+        list.add(p);
       }
     }
 
@@ -127,77 +225,8 @@ class TransactionController extends GetxController {
       return;
     }
 
-    // 1. Local period / date filter
-    final userTz = storageService.user?['timezone']?.toString();
-    final now = CurrencyFormatter.nowInTimezone(userTz);
-    if (selectedView.value == 'Day') {
-
-      final start = DateTime(now.year, now.month, now.day);
-      final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-    } else if (selectedView.value == 'Week') {
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final start = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-      final endOfWeek = startOfWeek.add(const Duration(days: 6));
-      final end = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59, 999);
-      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-    } else if (selectedView.value == 'Month') {
-      final start = DateTime(now.year, now.month, 1);
-      final lastDay = DateTime(now.year, now.month + 1, 0).day;
-      final end = DateTime(now.year, now.month, lastDay, 23, 59, 59, 999);
-      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-    } else if (selectedView.value == 'Year') {
-      final start = DateTime(now.year, 1, 1);
-      final end = DateTime(now.year, 12, 31, 23, 59, 59, 999);
-      list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-    } else if (selectedView.value == 'Custom') {
-      if (filterYear.value != null && filterMonth.value != null) {
-        final y = filterYear.value!;
-        final m = filterMonth.value!;
-        final start = DateTime(y, m, 1);
-        final lastDay = DateTime(y, m + 1, 0).day;
-        final end = DateTime(y, m, lastDay, 23, 59, 59, 999);
-        list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-      } else if (filterYear.value != null) {
-        final y = filterYear.value!;
-        final start = DateTime(y, 1, 1);
-        final end = DateTime(y, 12, 31, 23, 59, 59, 999);
-        list = list.where((t) => !t.date.isBefore(start) && !t.date.isAfter(end)).toList();
-      }
-    }
-
-    // 2. Local type filter
-    if (selectedType.value.isNotEmpty) {
-      list = list.where((t) => t.type.toLowerCase() == selectedType.value.toLowerCase()).toList();
-    }
-
-    // 3. Local category filter
-    if (selectedCategory.value.isNotEmpty && selectedCategory.value != 'all') {
-      list = list.where((t) => t.category?.id == selectedCategory.value).toList();
-    }
-
-    // 4. Local search filter
-    if (searchQuery.value.isNotEmpty) {
-      final q = searchQuery.value.toLowerCase();
-      list = list.where((t) => t.description.toLowerCase().contains(q)).toList();
-    }
-
-    // 5. Local sort
-    switch (selectedSort.value) {
-      case 'oldest':
-        list.sort((a, b) => a.date.compareTo(b.date));
-        break;
-      case 'highest':
-        list.sort((a, b) => b.amount.compareTo(a.amount));
-        break;
-      case 'lowest':
-        list.sort((a, b) => a.amount.compareTo(b.amount));
-        break;
-      case 'newest':
-      default:
-        list.sort((a, b) => b.date.compareTo(a.date));
-        break;
-    }
+    list = list.where(_matchesCurrentFilter).toList();
+    _sortTransactionList(list);
 
     transactions.assignAll(list);
     _recalculateSummary();
@@ -325,6 +354,7 @@ class TransactionController extends GetxController {
           merged.add(r);
         }
       }
+      _sortTransactionList(merged);
 
       transactions.assignAll(merged);
 
@@ -452,6 +482,7 @@ class TransactionController extends GetxController {
           merged.add(r);
         }
       }
+      _sortTransactionList(merged);
 
       transactions.assignAll(merged);
 
@@ -526,6 +557,7 @@ class TransactionController extends GetxController {
       final existingIds = transactions.map((t) => t.id).toSet();
       final uniqueNew = res.items.where((t) => !existingIds.contains(t.id)).toList();
       transactions.addAll(uniqueNew);
+      _sortTransactionList(transactions);
 
       // Cache merge
       final existingCached = storageService.cachedTransactions;
@@ -684,6 +716,15 @@ class TransactionController extends GetxController {
       final key = '${t.date.year.toString().padLeft(4, '0')}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
       groups.putIfAbsent(key, () => []).add(t);
     }
+
+    if (selectedSort.value == 'oldest') {
+      final sortedKeys = groups.keys.toList()..sort((a, b) => a.compareTo(b));
+      return {for (final k in sortedKeys) k: groups[k]!};
+    } else if (selectedSort.value == 'newest' || selectedSort.value.isEmpty) {
+      final sortedKeys = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+      return {for (final k in sortedKeys) k: groups[k]!};
+    }
+
     return groups;
   }
 
@@ -1041,8 +1082,12 @@ class TransactionController extends GetxController {
       linkedIncomeId: linkedIncomeId,
     );
 
-    // Optimistic insert
-    transactions.insert(0, localTx);
+    // Optimistic insert matching current filter and keeping sorted order
+    if (_matchesCurrentFilter(localTx)) {
+      transactions.add(localTx);
+      _sortTransactionList(transactions);
+      transactions.refresh();
+    }
     _recalculateSummary();
     _upsertCachedTransaction(localTx);
     if (linkedIncomeId != null && linkedIncomeId.isNotEmpty) {
@@ -1081,12 +1126,21 @@ class TransactionController extends GetxController {
 
       // Replace optimistic tempTx with server transaction
       final index = transactions.indexWhere((t) => t.id == tempId);
+      final serverTx = newTx.copyWith(isPendingSync: false);
       if (index != -1) {
-        transactions[index] = newTx.copyWith(isPendingSync: false);
-        transactions.refresh();
+        if (_matchesCurrentFilter(serverTx)) {
+          transactions[index] = serverTx;
+        } else {
+          transactions.removeAt(index);
+        }
+      } else if (_matchesCurrentFilter(serverTx)) {
+        transactions.add(serverTx);
       }
+      _sortTransactionList(transactions);
+      transactions.refresh();
+
       _removeCachedTransaction(tempId);
-      _upsertCachedTransaction(newTx.copyWith(isPendingSync: false));
+      _upsertCachedTransaction(serverTx);
 
       SnackbarService.success('Transaction recorded successfully!');
       notifyGlobalStateChange();
@@ -1152,7 +1206,12 @@ class TransactionController extends GetxController {
       date: calendarDate,
       linkedIncomeId: linkedIncomeId,
     );
-    transactions[idx] = updatedLocal;
+    if (_matchesCurrentFilter(updatedLocal)) {
+      transactions[idx] = updatedLocal;
+    } else {
+      transactions.removeAt(idx);
+    }
+    _sortTransactionList(transactions);
     transactions.refresh();
     _recalculateSummary();
     _upsertCachedTransaction(updatedLocal);
@@ -1196,11 +1255,19 @@ class TransactionController extends GetxController {
       });
 
       final newIdx = transactions.indexWhere((t) => t.id == id);
+      final finalTx = updatedTx.copyWith(isPendingSync: false);
       if (newIdx != -1) {
-        transactions[newIdx] = updatedTx.copyWith(isPendingSync: false);
-        transactions.refresh();
+        if (_matchesCurrentFilter(finalTx)) {
+          transactions[newIdx] = finalTx;
+        } else {
+          transactions.removeAt(newIdx);
+        }
+      } else if (_matchesCurrentFilter(finalTx)) {
+        transactions.add(finalTx);
       }
-      _upsertCachedTransaction(updatedTx.copyWith(isPendingSync: false));
+      _sortTransactionList(transactions);
+      transactions.refresh();
+      _upsertCachedTransaction(finalTx);
       SnackbarService.success('Transaction updated successfully!');
       notifyGlobalStateChange();
       return true;
